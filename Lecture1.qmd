@@ -15,16 +15,41 @@ format:
 editor: visual
 ---
 
-## Quarto
+## Introduction
 
-Quarto enables you to weave together content and executable code into a finished presentation. To learn more about Quarto presentations see <https://quarto.org/docs/presentations/>.
+Basic properties of R
 
-## Bullets
+Script files
 
-When you click the **Render** button a document will be generated that includes:
+Data structures and objects
 
--   Content authored with markdown
--   Output from executable code
+Data input and output
+
+Tabulations in R
+
+## What is R
+
+\begin{columns}
+    \begin{column}{0.48\textwidth}
+        Statistical language
+  \begin{itemize}      
+  \item Vast community
+  \item 23 000+ free packages
+  \item Cross plattform compatible (Windows, OS,...)
+  \item can be connected to other languages
+  \item Free and open source
+  \item learning is easy
+  \item excellent graphics
+  \end{itemize}
+  
+  \end{column}
+  \begin{column}{0.48\textwidth}
+        \begin{figure}
+\centering
+\includegraphics[width=0.8\linewidth]{Rlogo}
+\end{figure}
+    \end{column}
+\end{columns}
 
 ## Code
 
