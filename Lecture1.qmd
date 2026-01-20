@@ -61,7 +61,7 @@ For further information and download: <http://www.r-project.org/>
 
 -   Dalgaard, P. *Introductory Statistics with R, 2nd Ed.* \newline Springer, New York, 2008.
 
--   *Statistical Practice in Epidemiology Using R*. An international course, IARC, Tarto, 2020. \|[http://bendixcarstensen.com/SPE/\|](http://bendixcarstensen.com/SPE/|)
+-   *Statistical Practice in Epidemiology Using R*. An international course, IARC, Tarto, 2020. \|<http://bendixcarstensen.com/SPE/%7C>
 
 -   R blog
 
@@ -93,29 +93,34 @@ Many features of R are more appealing in the long run.
 
 -   Dynamic documentation/publishing (quarto)
 
-# R language - basis
+# 
 
 # CRAN - R community
 
--   Packages are collections of new commands, a.k.a. functions, that are developed and shared by the worldwide R userbase.
+::::: columns
+::: {.column width="60%"}
+-   CRAN is a collection of packages
 
--   base R containes 15 packages
+-   Packages  (20 000+) are collections of new commands/functions, that are developed and shared by the worldwide R userbase.
 
--    While [CRAN](https://cran.r-project.org/) is the most popular package archive for R tools.
-
--   Functions and packages are developed in response to identified needs
+-   base R containes several package and operations
 
 -   If your needs are unmet by base R, there’s likely a package for it
 
--   Altogether, there are more than 20,000 packages on CRAN, alone
-
 -   In epidemiology most useful packages are survival and Epi.
 
--   There are tens of thousands of unpublished packages
-
 -   Entire ecosystems of packages exist (*Tidyverse)*
+:::
+
+::: {.column width="40%" echo="F"}
+$\includegraphics[width=0.8\linewidth]{Rlogo}$
+:::
+:::::
 
 # Rstudio - script development
+
+``` r
+```
 
 # Quarto - dynamic publishing
 
@@ -134,3 +139,21 @@ Many features of R are more appealing in the long run.
 ```
 
 # Writing dynamic publication using R
+
+# R language - data types
+
+Data objects of different kinds
+
+-   **vector**: ordered set of similar elements
+
+    real numbers or character sequences
+
+-   **factor:** categorical variable with levels
+
+    gender, levels: c(1,2) or c('male', 'female')
+
+-   **matrix, array**: 2- and k-dimensional tables
+
+-   **data.frame**: "data matrix" (more of this soon!)
+
+-   **list:** sequence of different types of objects.
