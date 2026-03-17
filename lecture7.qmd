@@ -15,56 +15,42 @@ format:
 editor: visual
 ---
 
-
-
 # Topics somewhat covered
 
-1. Survival or time to event data & censoring.
-\medskip
-2. Probability concepts for times to event: \newline 
- survival, hazard and cumulative hazard functions
-\medskip
-3. Kaplan--Meier and Nelson--Aalen estimators.
-\medskip
-4. Regression modelling of hazards: Cox model.
-\medskip
-5. Competing risks and cumulative incidence function (CIF)
-\bigskip
+1.  Survival or time to event data & censoring. \medskip
+2.  Probability concepts for times to event: \newline  survival, hazard and cumulative hazard functions \medskip
+3.  Kaplan--Meier and Nelson--Aalen estimators. \medskip
+4.  Regression modelling of hazards: Cox model. \medskip
+5.  Competing risks and cumulative incidence function (CIF) \bigskip
 
 Main R functions to be covered (\texttt{survival} package)
 
-- \texttt{Surv(), survfit(), survminer(), coxph()}
-
+-   \texttt{Surv(), survfit(), survminer(), coxph()}
 
 # Survival time -- time to event
 
-Let $T$ be the \textbf{time} spent in a given \textbf{state} from its 
-beginning till a certain \textit{endpoint} or \textit{outcome} \textbf{event} or \textit{transition}
- occurs, changing the state to another. \newline
- (\texttt{lex.Cst - lex.dur - lex.Xst})
+Let $T$ be the \textbf{time} spent in a given \textbf{state} from its beginning till a certain \textit{endpoint} or \textit{outcome} \textbf{event} or \textit{transition} occurs, changing the state to another. \newline (\texttt{lex.Cst - lex.dur - lex.Xst})
 
 \bigskip
+
 Examples of such times and outcome events:
 
-- lifetime: birth $\rightarrow$ death,
-\medskip
-- duration of marriage: wedding $\to$ divorce, 
-\medskip
-- healthy exposure time: \newline start of exposure $\rightarrow$ onset of disease,
-  \medskip
-\item clinical survival time: \newline
- diagnosis of a disease  $\rightarrow$ death.
+-   lifetime: birth $\rightarrow$ death, \medskip
 
+-   duration of marriage: wedding $\to$ divorce, \medskip
 
+-   healthy exposure time: \newline start of exposure $\rightarrow$ onset of disease, \medskip
+
+    \item
+
+    clinical survival time: \newline diagnosis of a disease $\rightarrow$ death.
 
 # Set-up of classical survival analysis
 
-- \textbf{Two-state model}: only one type of event changes the initial state.
-\medskip
-- Major applications: analysis of lifetimes
- since birth and of survival times since diagnosis of a disease 
- until death from any cause.
+-   \textbf{Two-state model}: only one type of event changes the initial state. \medskip
+-   Major applications: analysis of lifetimes since birth and of survival times since diagnosis of a disease until death from any cause.
 
+```{=tex}
 \setlength{\unitlength}{0.7pt}
 \begin{picture}(400,80)(-40,70)
   \thicklines
@@ -73,78 +59,65 @@ Examples of such times and outcome events:
   \put(125,105){\vector(1, 0){100}}
   \put(170,110){\makebox(0,0)[b]{Transition}}
 \end{picture}
-
- \textbf{Censoring}: Death and final lifetime not observed
-  for some subjects 
-  due to emigration or closing the follow-up while they are still
- alive. 
-
+```
+\textbf{Censoring}: Death and final lifetime not observed for some subjects due to emigration or closing the follow-up while they are still alive.
 
 # Distribution concepts: survival function
 
-Cumulative distribution function (CDF)
-$F(t)$ and density function $f(t) =F'(t)$ of survival time $T$:
-$$
+Cumulative distribution function (CDF) $F(t)$ and density function $f(t) =F'(t)$ of survival time $T$: $$
 F(t) =  P( T \le t) = \int_0^t f(u) du 
-$$
-= \textbf{risk} or probability that the event occurs by $t$. 
+$$ = \textbf{risk} or probability that the event occurs by $t$.
 
 \bigskip
-\textbf{Survival function} 
-$$ 
+
+\textbf{Survival function} $$ 
 S(t) = 1- F(t) =  P( T  >  t) = \int_t^{\infty} f(u)du, 
-$$
-= probability of avoiding the event at least up to $t$ \newline
-(the event occurs
-only after $t$).  
-
-
+$$ = probability of avoiding the event at least up to $t$ \newline (the event occurs only after $t$).
 
 # Distribution concepts: hazard function
 
-The \textbf{hazard rate} or \textbf{intensity} function $\lambda(t)$
-\begin{align*}
+The \textbf{hazard rate} or \textbf{intensity} function $\lambda(t)$ \begin{align*}
 \lambda(t) & = \underset{\Delta \rightarrow 0}{\lim} 
  {P(t < T \le t+\Delta | T > t)}/{\Delta} \\
    & = \underset{\Delta \rightarrow 0}{\lim} 
       \frac{P(t < T \le t+\Delta)/\Delta }{P(T > t)}
      = \frac{f(t)}{S(t)}  
 \end{align*}
+
+```{=tex}
 \begin{enumerate}[$\approx$]
 \item  the conditional probability that
 the event occurs in a short
  interval $(t, t+\Delta]$, given that it does not
 occur before $t$, per interval length. 
 \end{enumerate}
-
+```
 In other words, during a short interval
- \begin{center}
+
+```{=tex}
+\begin{center}
  risk of event $\approx$ hazard $\times$ interval length 
  \end{center}
-
-The \textbf{cumulative hazard} (or integrated intensity):
-$$
+```
+The \textbf{cumulative hazard} (or integrated intensity): $$
 \Lambda(t) = \int_0^t \lambda(v)dv
 $$
 
-
-
-
-
-
 # Observed data on survival times
 
-For individuals $i = 1, \dots, n$ let 
-\vspace{-0.3cm}
+For individuals $i = 1, \dots, n$ let \vspace{-0.3cm}
+
+```{=tex}
 \begin{enumerate}[ ]
 \item $\qquad T_i$ = true time to event,
 \item $\qquad U_i$ = true time to censoring.
 \end{enumerate}
-Censoring is assumed \textbf{noninformative}, \textit{i.e.} independent 
- from occurrence of events.
- 
-We observe 
-\vspace{-0.3cm}
+```
+Censoring is assumed \textbf{noninformative}, \textit{i.e.} independent from occurrence of events.
+
+We observe \vspace{-0.3cm}
+
+```{=tex}
 \begin{enumerate}[ ]
 \item
 $y_i = \text{min}\{ T_i, U_i \}$, \textit{i.e.}
@@ -153,13 +126,12 @@ the exit time, and
  $ \delta_{i} = 1_{ \{ T_i < U_i  \} }$, 
   indicator (1/0) for the event occurring first, before censoring. 
 \end{enumerate}
-
+```
 Censoring must properly be taken into account in the statistical analysis.
-
-
 
 # Approaches for analysing survival time
 
+```{=tex}
 \begin{itemize}
 \item 
 \textbf{Parametric models} on hazard rate $h(t)$ \\
@@ -179,80 +151,68 @@ like \\ Kaplan--Meier (KM)
 estimator of survival curve $S(t)$ and \newline Cox 
 proportional hazards model.
 \end{itemize}
-
-
-
+```
 # R package \texttt{survival}
 
 Tools for analysis with one outcome event.
 
-- \texttt{Surv(time,event) -> sobj} \newline 
-creates a \textbf{survival object} \texttt{sobj},
+-   \texttt{Surv(time,event) -> sobj} \newline  creates a \textbf{survival object} \texttt{sobj},
 
-- \texttt{survfit(sobj) -> sfo} \newline 
-non-parametric survival curve estimates, like KM 
-(also estimated baseline in a Cox model), 
+-   \texttt{survfit(sobj) -> sfo} \newline  non-parametric survival curve estimates, like KM (also estimated baseline in a Cox model),
 
-- \texttt{plot(sfo)} \newline 
-survival curves and related graphs, 
+-   \texttt{plot(sfo)} \newline  survival curves and related graphs,
 
-- \texttt{coxph(sobj \~{} x1 + x2 +...)} \newline  
-fits the Cox model
-with covariates \texttt{x1} and \texttt{x2}. 
+-   \texttt{coxph(sobj \~{} x1 + x2 +...)} \newline   fits the Cox model with covariates \texttt{x1} and \texttt{x2}.
 
-- \texttt{glm()} -- piecewise constant rate model.
+-   \texttt{glm()} -- piecewise constant rate model.
 
-- \texttt{survreg()} -- parametric survival models.
-
+-   \texttt{survreg()} -- parametric survival models.
 
 # KM esimate for survival function $S(t)$
 
+```{=tex}
 \begin{itemize}
 \item  Order event times (possibly separately in groups)
 \item $\widehat{S(t_j)}=\widehat{S(t_{j-1})} \left(1-\frac{d_j}{n_j}\right) $, where $t_0=0$ and
 ${\widehat{S(0)}=1}$
 \item ${\widehat{S(t)}}$ is constant between event -- step function 
 \item Each observations contributes as long as at risk for the event and confidence intervals can be introduced using classical inference framework.
-\end{itemize}  
-
-
-
-
+\end{itemize}
+```
 # Veterans' Administration Lung Cancer study
 
 In this trial, males with advanced inoperable lung cancer were randomized to a standard therapy and a test chemotherapy. The primary endpoint for the therapy comparison was time to death in days, represented by the variable Time.
 
-Variables 
+Variables
 
+```{=tex}
 \begin{itemize}
-\item trt:	 1=standard 2=test
+\item trt:   1=standard 2=test
 \item celltype:1=squamous, 2=smallcell, 3=adeno, 4=large
-\item time:	 survival time (days)
-\item status:	 status 1= death, 0=censored 
-\item karno:	 Karnofsky performance score (100=good)
+\item time:  survival time (days)
+\item status:    status 1= death, 0=censored 
+\item karno:     Karnofsky performance score (100=good)
 \item diagtime:months from diagnosis to randomisation
-\item age:	 in years
-\item prior:	 prior therapy 0=no, 1=yes
+\item age:   in years
+\item prior:     prior therapy 0=no, 1=yes
 \end{itemize}
-
+```
 \scriptsize Reference: D Kalbfleisch and RL Prentice (1980), The Statistical Analysis of Failure Time Data. Wiley, New York.
-
-
 
 # Veteran data
 
 \scriptsize
+
 ```{r, comment=NA,echo=T}
 library(survival)
 head(veteran)
 head(veteran[veteran$trt==2,])
 ```
 
-
-
 # Estimate for hazard function $\lambda(t)$ in R \newline -- splitting time scale
 
-\scriptsize 
+\scriptsize
+
 ```{r, comment=NA,echo=T, warning=F, message=FALSE}
 #===============================
 # get packages needed for the analysis
@@ -275,10 +235,10 @@ nvet<-survSplit(veteran,
                 end="time",episode="period")
 ```
 
-
 # Estimate for hazard function $\lambda(t)$ in R \newline -- splitting time scale
 
-\scriptsize 
+\scriptsize
+
 ```{r, comment=NA,echo=T, warning=F, message=FALSE}
 #===============================
 # dplyr -package,rather than stat.table() -function 
@@ -294,10 +254,10 @@ speriod<-data.frame(speriod)
 speriod[,1:6]
 ```
 
-
 # Estimate for hazard function $\lambda(t)$ in R \newline -- Poisson regression
 
-\scriptsize 
+\scriptsize
+
 ```{r, comment=NA,echo=T, warning=F, message=FALSE}
 #===============================
 # Poisson model for incidence in each period of time
@@ -311,11 +271,10 @@ Lambda_1yr<- sum(exp(m$coefficient[1:4])*c(100,100,100,65))
 exp(-Lambda_1yr)*100
 ```
 
-
 # Estimation of the survival function $S(t)$
 
+\scriptsize
 
-\scriptsize 
 ```{r, comment=NA,echo=T, warning=F, message=FALSE}
 m <- survfit(formula = Surv(time, status) ~ trt, data = veteran)
 m2 <- summary(m)
@@ -323,97 +282,89 @@ m2 <- data.frame(lapply(c(10,2:6) , function(x) m2[x]))
 m2[m2$time<10,]
 ```
 
-:::::: {.columns}
-
+::: columns
 ::: {.column width="50%"}
-- trt=1
+-   trt=1
 
+```{=tex}
 \begin{enumerate}[ ]
 \item $S(0)=1$\\
 \item $S(3)=S(0)\times(1-1/69)=0.986$\\
 \item $S(4)=S(3)\times(1-1/68)=0.971$
     
 \end{enumerate}
-
+```
 :::
 
 ::: {.column width="50%"}
-- trt=2
+-   trt=2
 
+```{=tex}
 \begin{enumerate}[ ]
 \item $S(0)=1$\\
 \item $S(1)=S(0)\times(1-2/68)=0.971$\\
 \item $S(2)=S(1)\times(1-1/66)=0.956$
 
 \end{enumerate}
+```
 :::
-::::::
+:::
 
 # Plot of Survival curve for Veteran data
 
 \scriptsize
+
 ```{r, comment=NA,echo=T, warning=F, message=FALSE, fig.height=6.5}
 library(survminer)
 ggsurvplot(m, pval = TRUE, conf.int = TRUE, risk.table = TRUE)
 ```
 
-
 # Regression models for time-to-event data: Cox model
 
-Baseline hazard $\lambda_0(t,\alpha)$ may be given a parametric form (\textit{e.g.} Weibull) or
-a piecewise constant rate (exponential) structure.
+Baseline hazard $\lambda_0(t,\alpha)$ may be given a parametric form (\textit{e.g.} Weibull) or a piecewise constant rate (exponential) structure.
 
 \bigskip
-Often a parameter-free form $\lambda_0(t)$ is assumed. Then
-$$
+
+Often a parameter-free form $\lambda_0(t)$ is assumed. Then $$
   \lambda_i(t) = \lambda_0(t) \exp(\eta_1),
-$$
-specifies the \textbf{Cox model} or the \textbf{semiparametric proportional hazards model}.
+$$ specifies the \textbf{Cox model} or the \textbf{semiparametric proportional hazards model}.
 
 \bigskip
-$\eta_i = \beta_1 x_{i1} + \dots + \beta_p x_{ip}$ not depending on time.  
+
+$\eta_i = \beta_1 x_{i1} + \dots + \beta_p x_{ip}$ not depending on time.
 
 \bigskip
-Generalizations: \textbf{time-dependent} \newline covariates $x_{ij}(t)$, and/or 
-effects $\beta_j(t)$.
 
-
+Generalizations: \textbf{time-dependent} \newline covariates $x_{ij}(t)$, and/or effects $\beta_j(t)$.
 
 # PH model: interpretation of parameters
 
-Present the model explicitly in terms of $x$'s and $\beta$'s.
-$$
+Present the model explicitly in terms of $x$'s and $\beta$'s. $$
 \lambda_i(t) = \lambda_0(t)  \exp({\beta_1 x_{i1} + \dots +
 \beta_p x_{ip}})
-$$
-Consider two individuals, $i$ and $i'$, having the same values of all
-other covariates except the $j^{\text{th}}$ one.
+$$ Consider two individuals, $i$ and $i'$, having the same values of all other covariates except the $j^{\text{th}}$ one.
 
 \bigskip
-The ratio of hazards is constant:
-$$  \frac{\lambda_i(t)}{\lambda_{i'}(t)} = \frac{\exp( \eta_{i}) }{\exp(\eta_{i'})}
-= \exp \{ \beta_j(x_{ij}-x_{i'j}) \} . $$
-Thus $e^{\beta_j} = \text{HR}_j$ = \textbf{hazard ratio} or relative rate
- associated with
- a unit change in covariate $X_j$.
 
+The ratio of hazards is constant: $$  \frac{\lambda_i(t)}{\lambda_{i'}(t)} = \frac{\exp( \eta_{i}) }{\exp(\eta_{i'})}
+= \exp \{ \beta_j(x_{ij}-x_{i'j}) \} . $$ Thus $e^{\beta_j} = \text{HR}_j$ = \textbf{hazard ratio} or relative rate associated with a unit change in covariate $X_j$.
 
 # Ex. Veteran data and treatment effect
 
-Fitting Cox models with trt effect.
-\scriptsize
+Fitting Cox models with trt effect. \scriptsize
+
 ```{r, comment=NA,echo=T, warning=F, message=FALSE, fig.height=4.5}
 m <- coxph(formula = Surv(time, status) ~ trt, data = veteran)
 summary(m)
 ```
 
 \normalsize
-HR for treatment 2 vs. 1 is 1.02 (95% CI 0.71;1.45) \newline
-Not statistically significant (p=0.92)
 
-
+HR for treatment 2 vs. 1 is 1.02 (95% CI 0.71;1.45) \newline Not statistically significant (p=0.92)
 
 # Proportionalilty of hazards?
+
+```{=tex}
 \begin{itemize}
 \item
 Consider two groups $g$ and $h$ defined by one categorical covariate, and let $\rho > 0$. 
@@ -435,24 +386,20 @@ whether they are sufficiently parallel}.
 \item
 Testing the proportionality assumptions: \texttt{cox.zph(coxobj)}.
 \end{itemize}
-
-
-
-
+```
 # Ex. Veteran data - test PH
 
+```{=tex}
 \begin{itemize}
 \item With $>1$ covariates, \texttt{cox.zph()} tests the assumption by checking, whether the corresponding parameters (\& hazard ratios) may vary in time.
 \item Suppose that I want to include information on patient baseline general disease status -- Karnofsky performance score (0=dead, 100=good)
 \item Dichotomize the Karnofsky score 0 if Score $[$0,50 $]$ and 1 if $($50,100$]$
 \end{itemize}
-
-
-
-
+```
 # Ex. Veteran data - test PH
 
-\scriptsize 
+\scriptsize
+
 ```{r, comment=NA,echo=T, warning=F, message=FALSE, fig.height=4.5}
 veteran$karnod<-as.numeric(veteran$karno>50)
 m <- coxph(formula = Surv(time, status) ~ trt+ karnod, 
@@ -462,13 +409,12 @@ m
 cox.zph(m)
 ```
 
-Test for proportionality are significant (p<0.05) -- assumptions of proportionality of hazards is rejected for the score variable -- stratify baseline hazard by the score 
-
-
+Test for proportionality are significant (p\<0.05) -- assumptions of proportionality of hazards is rejected for the score variable -- stratify baseline hazard by the score
 
 # Ex. Veteran data - test PH
 
-\scriptsize 
+\scriptsize
+
 ```{r, comment=NA,echo=T, warning=F, message=FALSE, fig.height=4.5}
 m <- coxph(formula = Surv(time, status) ~ trt+strata(karnod), 
            data = veteran)
@@ -476,21 +422,13 @@ m
 cox.zph(m)
 ```
 
-Test for proportionality is not significant (p>0.05) \newline
-HR for treatment effect is 1.01 95% CI (0.71 ;1.45)
-
-
-
-
-
+Test for proportionality is not significant (p\>0.05) \newline HR for treatment effect is 1.01 95% CI (0.71 ;1.45)
 
 # Competing events & competing risks
 
-In many epidemiological and clinical contexts there are
-competing events that may 
-occur before the target event and remove the person from 
- the population at risk for the event, \textit{e.g.}
+In many epidemiological and clinical contexts there are competing events that may occur before the target event and remove the person from the population at risk for the event, \textit{e.g.}
 
+```{=tex}
 \begin{itemize}
 \item \textit{target event}: occurrence of endometrial cancer,
  \textit{competing events}: hysterectomy or death.
@@ -503,10 +441,10 @@ occur before the target event and remove the person from
  \textit{competing event}: death of either spouse.
  
 \end{itemize}
-
-
+```
 # Competing risks model: causes of death
-   
+
+```{=tex}
 \begin{itemize}
 \item
 Often the interest is focused on the risk or hazard of dying 
@@ -534,18 +472,16 @@ a \textbf{competing cause} of death hits first.
 \item
  Generalizes to several competing causes.
  \end{itemize}
-
-
-
-
-
+```
 # Event-specific quantities
 
-\textbf{Cumulative incidence function} (CIF) for event $c$:
-$$  F_c(t) = P(T \leq t \text{ and } C = c ), \quad c = 1,2.  $$
+\textbf{Cumulative incidence function} (CIF) for event $c$: $$  F_c(t) = P(T \leq t \text{ and } C = c ), \quad c = 1,2.  $$
 
 \medskip
+
 From this one can recover
+
+```{=tex}
 \begin{itemize}
 \item
 $F(t) = \sum_{c} F_c(t)$, CDF of event-free survival time $T$, \textit{i.e.} 
@@ -554,25 +490,24 @@ cumulative risk of any event by $t$.
 \item
 $S(t) = 1 - F(t)$, \textbf{event-free survival function}, \textit{i.e.} probability of avoiding all events by $t$
 \end{itemize}
-
-
-
+```
 # Event-specific quantities (cont'd)
 
-
-\textbf{Event-} or \textbf{cause-specific hazard function}
-\begin{align*}
+\textbf{Event-} or \textbf{cause-specific hazard function} \begin{align*}
  \lambda_c(t) & =  \underset{\Delta\to 0}{\lim} 
     \frac{P(t < T \le t+\Delta \text{ and } C = c \mid T > t)}{\Delta}  \\
         & =  \frac{f_c(t)}{1-F(t)}
 \end{align*}
+
+```{=tex}
 \begin{enumerate}[$\approx$]
 \item Risk of \textit{event} $c$ 
 in a short interval $(t, t+ \Delta]$,  given 
 \textit{avoidance of all events} up to $t$, 
 per interval length.
 \end{enumerate}
-
+```
+```{=tex}
 \begin{itemize}
 \item CIF = risk of event $c$ over risk period $[0,t]$ in the presence of competing risks, also obtained 
 $$ F_c(t) = \int_0^t \lambda_c(v) S(v) dv, \quad c = 1,2, $$
@@ -584,9 +519,10 @@ S(t) & = \exp\left\{ - \int_0^t [\lambda_1(v) + \lambda_2(v)]dv
  \right\} .
 \end{align*}
 \end{itemize}
+```
+# Non-parametric estimation of CIF
 
-# Non-parametric estimation of CIF 
-
+```{=tex}
 \begin{itemize}
 \item
 Let $t_1 < t_2 < \dots < t_K$ be the $K$ distinct 
@@ -609,15 +545,12 @@ $D_{kc}$ = no. of cases of event $c$ observed  at $t_k$.
 \textbf{N.B.} Naive KM estimator of ``cause-specific survival'' treats  
 competing events occuring first as censorings.
 \end{itemize}
-
-
-
-
+```
 # Ex. Survival of 338 oral cancer patients
 
+Important variables:
 
-Important variables: 
-
+```{=tex}
 \begin{itemize}
 \item \texttt{time} = duration of patientship from \\ 
  diagnosis (\textbf{entry}) till death or censoring, 
@@ -629,10 +562,12 @@ Important variables:
   1 = death from oral cancer, \\
   2 = death from some other cause.
 \end{itemize}
-
-
+```
 \medskip
+
 Special features:
+
+```{=tex}
 \begin{itemize}
 \item
    Several possible endpoints, \textit{i.e.} alternative causes of death, of which
@@ -641,9 +576,7 @@ Special features:
 \item
    Censoring -- incomplete observation of the survival time.   
 \end{itemize}
-
-
-
+```
 # Ex. Oral cancer data
 
 ```{r, comment=NA,echo=T}
@@ -651,18 +584,16 @@ orca <- read.table(file="oralca2.txt")
 head(orca)
 ```
 
-
-
-
-
 # Ex. Survival from oral cancer
 
+```{=tex}
 \begin{itemize}
 \item
 Creating a {\tt Lexis} object with two outcome events and \\ 
 obtaining a summary of transitions
 \end{itemize}
 \scriptsize
+```
 ```{r, comment=NA,echo=T,message=FALSE,warning=FALSE,results='hide'}
 library(Epi)
 orca.lex <- Lexis(exit = list(stime = time), 
@@ -671,13 +602,10 @@ orca.lex <- Lexis(exit = list(stime = time),
                   data = orca)
 summary(orca.lex)  
 ```
+
 ```{r, comment=NA,echo=F,message=FALSE,warning=FALSE}
 summary(orca.lex)  
 ```
-
-
-
-
 
 # Box diagram for transitions
 
@@ -686,15 +614,16 @@ Interactive use of function \tt boxes().
 ```{r, comment=NA,echo=T,message=FALSE,warning=FALSE,eval=FALSE}
 boxes(orca.lex)
 ```
+
+```{=tex}
 \begin{center}
 \includegraphics[height=6cm]{orca-boxes}
 \end{center}
 \normalsize
-
-
-
+```
 # Ex. Survival from oral cancer
 
+```{=tex}
 \begin{itemize}
 \item
 AJ-estimates of CIFs (solid) for both causes.
@@ -703,16 +632,14 @@ Naive KM-estimates of CIF (dashed) $>$ AJ-estimates
 \item
 CIF curves may also be stacked (right).  
 \end{itemize}
-
+```
 \includegraphics[width=10cm]{orcaCI1}
 
-\textbf{NB.} The sum of the naive KM-estimates of CIF exceeds 100\% at 13 years! 
-
-
-
+\textbf{NB.} The sum of the naive KM-estimates of CIF exceeds 100% at 13 years!
 
 # Warning of "net risk" and "cause-specific survival"
 
+```{=tex}
 \begin{itemize}                              
 \item
 The ``\textbf{\textit{net risk}}'' of outcome $c$ by time $t$, 
@@ -736,5 +663,4 @@ Yet, these *-functions, $ F_c^*(t)$ and $S_c^*(t)$, lack proper probability inte
 Hence, their use and naive KM estimation should be viewed critically
 (Andersen \& Keiding, \textit{Stat Med}, 2012)
 \end{itemize}
-
-
+```
