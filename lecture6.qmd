@@ -1,5 +1,5 @@
 ---
-title: "Epidemiological Data Analysis using R - Case-control analysis"
+title: "Epidemiological Data Analysis using R - Time-to-event analysis"
 author: 
   - Karri Seppä \newline
   - Faculty of Social Sciences, Tampere university \newline
@@ -15,563 +15,663 @@ format:
 editor: visual
 ---
 
+# Topics somewhat covered
 
-# Contents
+1.  Survival or time to event data & censoring. \medskip
+2.  Probability concepts for times to event: \newline  survival, hazard and cumulative hazard functions \medskip
+3.  Kaplan--Meier and Nelson--Aalen estimators. \medskip
+4.  Regression modelling of hazards: Cox model. \medskip
+5.  Competing risks and cumulative incidence function (CIF) \bigskip
 
-1. Case-control designs 
-\medskip
-2. Exposure odds ratio (EOR)
-  and its interpretation
-\medskip
-3. Estimation of EOR by logistic regression
-\medskip
-4. Matched case-control studies
+Main R functions to be covered (\texttt{survival} package)
+
+-   \texttt{Surv(), survfit(), survminer(), coxph()}
+
+# Survival time -- time to event
+
+Let $T$ be the \textbf{time} spent in a given \textbf{state} from its beginning till a certain \textit{endpoint} or \textit{outcome} \textbf{event} or \textit{transition} occurs, changing the state to another. \newline (\texttt{lex.Cst - lex.dur - lex.Xst})
+
 \bigskip
 
-Main R functions to be covered
+Examples of such times and outcome events:
 
-- \texttt{glm()}
+-   lifetime: birth $\rightarrow$ death, \medskip
 
-- \texttt{clogit()} and \texttt{cch()} in practical 6
+-   duration of marriage: wedding $\to$ divorce, \medskip
 
+-   healthy exposure time: \newline start of exposure $\rightarrow$ onset of disease, \medskip
 
-# Case-control design
+    \item
 
-- From given study  population (base pop'n) are selected 
-all or a random sample of
+    clinical survival time: \newline diagnosis of a disease $\rightarrow$ death.
 
-    - $D$ \textbf{cases}, or individuals with the \newline
-  disease being diagnosed during certain period
-\medskip
-    - $C$ \textbf{controls}, or ``healthy'' individuals at risk.
+# Set-up of classical survival analysis
 
+-   \textbf{Two-state model}: only one type of event changes the initial state. \medskip
+-   Major applications: analysis of lifetimes since birth and of survival times since diagnosis of a disease until death from any cause.
 
-\medskip
-- Exposure to risk factor $X$ and other covariates \newline
-  assessed in cases and chosen controls.
- \medskip
-- To increase efficiency and remove confounding,
-the sampling of controls is often \textit{stratified} or individually \textit{matched} for age, gender,
-place of residence, \textit{etc}.
-
-
-# Exposure odds ratio (EOR)
-
-With binary risk factor $X$ the results are summarized:
-
-\begin{center}
-\begin{tabular}{lccc}
-\toprule
-Exposure         &        Cases        &    Controls & Total\\
-\midrule
-yes $(X=1)$        &        $D_{1}$ &        $C_{1}$  & $T_1$  \\
-no $(X=0)$         &        $D_{0}$  &        $C_{0}$  & $T_0$  \\
-\midrule  
-Total        &                $D $  &  $C$  & $T $ \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-Common effect measure:
-
-- \textbf{exposure odds ratio}
-$$  
-      \text{EOR}  
-          =  \frac{ D_{1} / D_{0} } { C_{1} / C_{0} }  
-          = \frac{ D_{1} C_{0} } { D_{0} C_{1} }        
-$$
-
-
-# Precision in EOR
-
-Standard error of log(EOR),  95% error factor (EF) & \newline
- 95% confidence interval (CI) for 
-the associated parameter:
-\begin{align*}
- \text{SEL}  = & \sqrt{ \frac{1}{D_1} + \frac{1}{D_0} 
-    + \frac{1}{C_1} + \frac{1}{C_0} } \\ & & \\
- \text{EF}  = & \exp \{ 1.96 \times \text{SEL} \} \\ & & \\
- \text{CI}  = & [ \text{EOR} / \text{EF} ,\ \text{EOR} \times \text{EF} ] . 
-\end{align*}
-NB. Random error depends inversely on numbers of cases and controls.
-
-
-
-# What parameter is estimated by EOR?
-
-The answer depends on 
-
-- type of base population, from which cases emerge
-
-    - closed population or \textbf{cohort}, or 
-    - open or \textbf{dynamic population},
-
-- time dimensionality  \newline
--- longitudinal or cross-sectional
-\medskip
-- sampling principle of controls:
-
-    (A) case-noncase sampling
-\medskip 
-    (B) case-cohort sampling
-\medskip
-    (C) density sampling (incl. nested case-control study)
-
-
-
-# Sampling controls from a longitudinal base
-
-\pause
-Simplified ideal situation:\newline
- Complete follow-up 
-of a cohort of initially healthy subjects with 
-no losses during a fixed risk period.
-
-\pause
-\begin{center}
-{\normalsize
-\setlength{\unitlength}{0.08cm}
-\begin{picture}(135,50)
-\thicklines
-\linethickness{0.3mm}
-
-%mittlere Box
-
-\put(40,45){\line(6,-1){55}}
-\put(40,5){\framebox(55,40){}}
-
-%Achsenbeschriftung
-\put(45,-1.5){\makebox(25,5){\small Time ($t$)}}
-\put(25,-1){\makebox(25,5){\small Start}}
-\put(85,-1){\makebox(25,5){\small End}}
-\put(70,2.5){\vector(1,0){20}}
-
-\pause
-%linker Text
-\put(0,5){\makebox(40,40){\parbox{7cm}{\begin{center}
-						   {\small{\bf B}:  Initially at risk}\\
-						%	(disease-free)\\ (C)\\
-							{\small $(N)$}
-							\end{center} }}}
-\pause
-\put(40,15){\makebox(55,10){\parbox{11cm}{ \begin{center}
-						{\small {\bf C}: Currently at risk $(N_t)$}
-							\end{center} }}}
-\put(67.5,25){\vector(0,1){15}}
-\put(67.5,15){\vector(0,-1){9}}							
-%rechter Text
-\pause
-\put(100,30){\makebox(40,15){\parbox{7cm}{\begin{center}
-					{\small		New cases\\of disease\\ $(D)$}
-							\end{center} }}}
-\pause							
-\put(100,5){\makebox(40,20){\shortstack{\strut\small
-       {\bf A}: Still at risk \\ \strut
-						%	(disease-free)\\ \strut 	(A)\\
-						 \strut $(N - D)$ }}}
-
-
+```{=tex}
+\setlength{\unitlength}{0.7pt}
+\begin{picture}(400,80)(-40,70)
+  \thicklines
+  \put(  0, 80){\framebox(110,50){Alive}}
+  \put(240, 80){\framebox(110,50){Dead}}
+  \put(125,105){\vector(1, 0){100}}
+  \put(170,110){\makebox(0,0)[b]{Transition}}
 \end{picture}
-}
-\end{center}
+```
+\textbf{Censoring}: Death and final lifetime not observed for some subjects due to emigration or closing the follow-up while they are still alive.
 
-Possible sampling frames: \textbf{A}, \textbf{B} and \textbf{C}
+# Distribution concepts: survival function
 
+Cumulative distribution function (CDF) $F(t)$ and density function $f(t) =F'(t)$ of survival time $T$: $$
+F(t) =  P( T \le t) = \int_0^t f(u) du 
+$$ = \textbf{risk} or probability that the event occurs by $t$.
 
-# Sampling schemes or designs for controls
+\bigskip
 
-\pause
-\textbf{A:  Case-noncase sampling}
-\pause
+\textbf{Survival function} $$ 
+S(t) = 1- F(t) =  P( T  >  t) = \int_t^{\infty} f(u)du, 
+$$ = probability of avoiding the event at least up to $t$ \newline (the event occurs only after $t$).
 
-- Controls chosen from those $N-D$ 
-subjects 
-still at risk (healthy) 
-\underline{\textit{at the end}}
-of the follow-up. 
+# Distribution concepts: hazard function
 
-\pause   	     
-\textbf{B:  Case-cohort sampling}: 
-\pause
+The \textbf{hazard rate} or \textbf{intensity} function $\lambda(t)$ \begin{align*}
+\lambda(t) & = \underset{\Delta \rightarrow 0}{\lim} 
+ {P(t < T \le t+\Delta | T > t)}/{\Delta} \\
+   & = \underset{\Delta \rightarrow 0}{\lim} 
+      \frac{P(t < T \le t+\Delta)/\Delta }{P(T > t)}
+     = \frac{f(t)}{S(t)}  
+\end{align*}
 
-- The control group or \textbf{subcohort}   
-           is a random sample of the whole cohort $(N)$  
-				    \underline{\textit{at the start}} of the follow-up.
-
-\pause           	     
-\textbf{C:  Density sampling}: 
-\pause 
-         
-- Controls drawn 
-            \underline{\textit{during the follow-up}}
-              from those \newline currently at risk. 
-           \medskip
-- \textbf{Nested case-control design (NCC)}\newline
-         A set of controls is sampled from
-         the \textit{risk set} 
-			  \underline{\textit{at each time $t$ of diagnosis}}
-                           of a new case.
-
-
-# EOR in case-noncase sampling design
-
-- In the traditional or epidemic case-control study
-the controls are selected from
-those still healthy at the end of the
-risk period, during which cases are collected.
-\medskip
-\pause
-- In this design EOR estimates the \textbf{risk odds ratio} 
-$$ 
-\psi = \frac{ \text{odds of dis. in the exp'd} }
-                     {   \text{odds of dis. in the unexp'd} } 
-     = \frac{ \pi_1/(1-\pi_1) }{ \pi_0/(1-\pi_0) }, 
-$$
-  where $\pi_1$ and $\pi_0$ are the risks of disease in the exposed and unexposed groups, estimable from a corresponding cohort study by
-  incidence proportions $R_1$ and $R_0$. 
-\pause
-\medskip 
-- \textbf{NB.}  $\psi \approx \pi_1 / \pi_0 = \phi$, \textit{i.e.} close to \textbf{risk ratio}, when risks $\pi_1$ and $\pi_0$ are low 
-= the ``rare disease assumption''.              
-
-
-# Density sampling
-
-- New incident cases occurring during given study period 
-      are identified from the base population.
-\medskip      
-- controls are randomly chosen from the population  
-      at risk at various times in the period 
-      (sometimes only once).
-\medskip      
-- For chronic disease studies this design is the most popular,
-- Logically the only possibility in open populations,
-
-\textbf{Nested case-control study}: \textit{time-matched} selection:
-
-- one or more (rarely over $5$)
- controls chosen from the \newline population at risk 
- at each time $t_d$ when a new case is diagnosed. 
- 
- 
-# EOR in density sampling
-
-- In a full cohort
-study the true hazard ratio
-$\rho = \lambda_1 / \lambda_0$ 
-is estimated by the incidence rate ratio 
-$$  
-\text{IR} = \frac{I_1} {I_0} = \frac{D_1 / D_0 }{ Y_1 / Y_0} . 
-$$
-- In a case-control study with density sampling 
-the \textbf{exposure odds} among controls
-$C_1/C_0$ estimates the exposure odds $Y_1/Y_0$, i.e.
-the distribution of  person-years 
- in the base population.
-\medskip
-- Thus, the exposure odds ratio EOR
-$$ 
-\text{EOR} = \frac{D_1 / D_0 }{ C_1 / C_0} \approx 
-  \frac{D_1 / D_0 }{ Y_1 / Y_0} = \text{IR} 
-$$
-is a consistent estimator of the true hazard rate ratio
-$\rho$ without any rare-disease assumption.
-
-
-# Example. Alcohol use and oesophageal cancer
-
- (Tuyns et al 1977, see \textbf{B\&D} 1980).
-
-- 205 new cases of cancer identified in a French province 
-during two years, 
-and 770 randomly sampled population
-controls \newline $\Rightarrow$ Density sampling
-- \textbf{NB.} No stratification or matching for age in design \newline
-$\Rightarrow$
-Too many young controls in relation to few cases \newline
-$\Rightarrow$  inefficient! 
-\medskip
-- Exposure of interest: Daily consumption of alcohol.
-\medskip
-- In the following table the data are summarized by dichotomized 
-exposure and stratified by age group.
-\medskip
-- In R the data are found: \texttt{data(esoph)}
-
-
-# Example: Results stratified by age
-\small
-\begin{center}
-\begin{tabular}{lcccc}
-\toprule
-Age & Exposure $\geq 80$ g/d & Cases & Ctrls & EOR \\
-\midrule
-25-34 & yes         &  1 & 9 & $\infty$  \\
- { } & no                & 0 & 106 & { } \\
-\cmidrule{2-5} 
-35-44 & yes         &  4 & 26 &  5.05 \\
- { } & no                & 5 & 164 & { } \\
-\cmidrule{2-5} 
-45-54 & yes         &  25 & 29 & 5.67 \\
- { } & no                & 21 & 138 & { } \\
-\cmidrule{2-5} 
-55-64 & yes         &  42 & 27 & 6.36 \\
- { } & no                & 34 & 139 & { } \\
-\cmidrule{2-5} 
-65-74 & yes         &  19 & 18 & 2.58 \\
- { } & no                &  36 & 88 & { } \\
-\cmidrule{2-5}
-75-84 & yes         &  5 &  0 & $\infty$ \\
- { } & no                & 8 & 31 & { } \\
-\bottomrule 
-Total & yes   & 96 & 109 & 5.64 \\
-{ }  & no    & 104 & 666 & {(crude)} \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-
-# Example: (cont'd) 
-
-Modification?
-
-- Stratum-specific EOR$_k$s somewhat variable.
-\medskip
-- Random error in some of them apparently great (especially in the youngest and 
-the oldest age groups).
-
-Confounding?
-
-- Is exposure associated with age in the study population?
-\medskip 
-- Look at variation in the age-specific prevalences of exposure among controls.
-\medskip
-- Adjustment for age is generally reasonable.
-
-
-# Model for stratified data
-
-\textit{Random part}: 
-
-Conditional on total number of subjects 
-$$
-T_{jk} = D_{jk} + C_{jk}
-$$ 
-in each level $j$ $(j=1, 2)$ of
-exposure variable $X$ 
-and level $k$ $(k=1,\dots K)$ of
-covariate $Z$ we assume 
-$$ 
-D_{jk} \sim  \mbox{Binomial}(T_{jk};\ p_{jk}) , 
-$$
-where $p_{jk}$ is the "probability of being a case"
-in a group of cases & controls defined by $X$ and $Z$.
-
-
-# Model for stratified data (cont'd)
-
-\textit{Systematic part \& logit link}:
-$$
-\text{logit}( p_{jk} )
- = \log \left( \frac{\displaystyle p_{jk}}
-  { \displaystyle 1 - p_{jk} } 
-   \right ) = \alpha + \beta X + \gamma_k , 
-$$
-
-\begin{enumerate}[ ] 
-\item $X$ = exposure, 1: 'exposed'; 0: 'unexposed',
-\item $\alpha = \text{logit}(p_{11}) = $  
-                  log of "pseudo baseline odds",
-\item $\beta$ = logarithm of exposure odds ratio,  
-\item   $\quad  =    \log(\rho)$, 
-     logarithm of true rate ratio $\rho$
-\item    \quad\quad\ with density sampling,
-\item   $\gamma_k$ = logarithm of 
-   rate ratio btw levels $k$ and  1  of  $Z$.
+```{=tex}
+\begin{enumerate}[$\approx$]
+\item  the conditional probability that
+the event occurs in a short
+ interval $(t, t+\Delta]$, given that it does not
+occur before $t$, per interval length. 
 \end{enumerate}
-
-Hence $e^{\beta} = \rho$ is the common rate ratio 
-for the exposure effect assumed constant over the levels of $Z$. 
- 
-
- 
-# Example. Estimation by \texttt{glm()}
-
-Input of data
-
-\footnotesize
-```{r, comment=NA,echo=T}
-D <- c(0,1, 5,4, 21,25, 34,42, 36,19, 8,5) # no. of cases
-C <- c(106,9, 164,26, 138,29, 139,27, 88,18, 31,0) # controls
-Tot <- D + C         # cell totals       
 ```
-\normalsize
-Generation and naming of the levels for factors describing 
-age group and alcohol exposure
-\small
-```{r, comment=NA,echo=T}
-agr <- gl(6,2,12)  # 6 levels for age factor
-levels(agr) <- c("25-34", "35-44", "45-54", 
-                "55-64", "65-74", "75-84")
-alc <- gl(2,1,12)  # 2 levels for alcohol factor
-levels(alc) <- c("0-79g/d", "80+g/d")
+In other words, during a short interval
+
+```{=tex}
+\begin{center}
+ risk of event $\approx$ hazard $\times$ interval length 
+ \end{center}
 ```
-\normalsize
+The \textbf{cumulative hazard} (or integrated intensity): $$
+\Lambda(t) = \int_0^t \lambda(v)dv
+$$
 
-# Example. Estimation by \texttt{glm()}
+# Observed data on survival times
+
+For individuals $i = 1, \dots, n$ let \vspace{-0.3cm}
+
+```{=tex}
+\begin{enumerate}[ ]
+\item $\qquad T_i$ = true time to event,
+\item $\qquad U_i$ = true time to censoring.
+\end{enumerate}
+```
+Censoring is assumed \textbf{noninformative}, \textit{i.e.} independent from occurrence of events.
+
+We observe \vspace{-0.3cm}
+
+```{=tex}
+\begin{enumerate}[ ]
+\item
+$y_i = \text{min}\{ T_i, U_i \}$, \textit{i.e.}
+the exit time, and
+\item
+ $ \delta_{i} = 1_{ \{ T_i < U_i  \} }$, 
+  indicator (1/0) for the event occurring first, before censoring. 
+\end{enumerate}
+```
+Censoring must properly be taken into account in the statistical analysis.
+
+# Approaches for analysing survival time
+
+```{=tex}
+\begin{itemize}
+\item 
+\textbf{Parametric models} on hazard rate $h(t)$ \\
+(like Weibull, gamma, etc.) -- Likelihood:
+\begin{align*} L & = \prod_{i=1}^n \lambda(y_i)^{\delta_i} S(y_i) \\
+  & = 
+   \exp\left\{ \sum_{i=1}^n 
+     [ \delta_i \: \log \: \lambda(y_i) - \Lambda(y_i) ] 
+       \right\} 
+\end{align*}   
+\item 
+\textbf{Piecewise constant rate} model on $\lambda(t)$ \\ 
+-- estimation of $\hat\lambda(t)$ with poisson regression 
+\item 
+\textbf{Non-parametric} methods, 
+like \\ Kaplan--Meier (KM) 
+estimator of survival curve $S(t)$ and \newline Cox 
+proportional hazards model.
+\end{itemize}
+```
+# R package \texttt{survival}
+
+Tools for analysis with one outcome event.
+
+-   \texttt{Surv(time,event) -> sobj} \newline  creates a \textbf{survival object} \texttt{sobj},
+
+-   \texttt{survfit(sobj) -> sfo} \newline  non-parametric survival curve estimates, like KM (also estimated baseline in a Cox model),
+
+-   \texttt{plot(sfo)} \newline  survival curves and related graphs,
+
+-   \texttt{coxph(sobj \~{} x1 + x2 +...)} \newline   fits the Cox model with covariates \texttt{x1} and \texttt{x2}.
+
+-   \texttt{glm()} -- piecewise constant rate model.
+
+-   \texttt{survreg()} -- parametric survival models.
+
+# KM esimate for survival function $S(t)$
+
+```{=tex}
+\begin{itemize}
+\item  Order event times (possibly separately in groups)
+\item $\widehat{S(t_j)}=\widehat{S(t_{j-1})} \left(1-\frac{d_j}{n_j}\right) $, where $t_0=0$ and
+${\widehat{S(0)}=1}$
+\item ${\widehat{S(t)}}$ is constant between event -- step function 
+\item Each observations contributes as long as at risk for the event and confidence intervals can be introduced using classical inference framework.
+\end{itemize}
+```
+# Veterans' Administration Lung Cancer study
+
+In this trial, males with advanced inoperable lung cancer were randomized to a standard therapy and a test chemotherapy. The primary endpoint for the therapy comparison was time to death in days, represented by the variable Time.
+
+Variables
+
+```{=tex}
+\begin{itemize}
+\item trt:   1=standard 2=test
+\item celltype:1=squamous, 2=smallcell, 3=adeno, 4=large
+\item time:  survival time (days)
+\item status:    status 1= death, 0=censored 
+\item karno:     Karnofsky performance score (100=good)
+\item diagtime:months from diagnosis to randomisation
+\item age:   in years
+\item prior:     prior therapy 0=no, 1=yes
+\end{itemize}
+```
+\scriptsize Reference: D Kalbfleisch and RL Prentice (1980), The Statistical Analysis of Failure Time Data. Wiley, New York.
+
+# Veteran data
+
+\scriptsize
 
 ```{r, comment=NA,echo=T}
-data.frame( agrn = as.numeric(agr), agr, 
-            alcn = as.numeric(alc), alc, D, C, Tot)
+library(survival)
+head(veteran)
+head(veteran[veteran$trt==2,])
 ```
 
+# Estimate for hazard function $\lambda(t)$ in R \newline -- splitting time scale
 
-# Example. Estimation by \texttt{glm()} (cont'd)
+\scriptsize
 
-Crude estimation
-\small
-```{r, comment=NA,echo=T, warning=FALSE}
+```{r, comment=NA,echo=T, warning=F, message=FALSE}
+#===============================
+# get packages needed for the analysis
+#===============================
+library(dplyr)
+library(survival)
 library(Epi)
-mod1 <- glm( D/Tot ~ alc, fam = binomial, w = Tot)
-round(ci.lin(mod1, Exp=T)[ , -(3:4)], 4)
+#===============================
+# define stating time at 0 and create subject id
+#===============================
+veteran$start<-0
+veteran$id<-1:nrow(veteran)
+#===============================
+# Split follow-up time into interval
+#===============================
+nvet<-survSplit(veteran,
+                cut=c(100,200,300,400),
+                event="status",
+                start="start",
+                end="time",episode="period")
 ```
+
+# Estimate for hazard function $\lambda(t)$ in R \newline -- splitting time scale
+
+\scriptsize
+
+```{r, comment=NA,echo=T, warning=F, message=FALSE}
+#===============================
+# dplyr -package,rather than stat.table() -function 
+#===============================
+gsvet<-group_by(nvet,period)
+speriod<-summarize(gsvet, 
+               n=length(trt),
+               events=sum(status),
+               pyrs=round(sum(time-start)),
+               rate1000=(events/pyrs)*1000,
+               lograte=log(events/pyrs))
+speriod<-data.frame(speriod)
+speriod[,1:6]
+```
+
+# Estimate for hazard function $\lambda(t)$ in R \newline -- Poisson regression
+
+\scriptsize
+
+```{r, comment=NA,echo=T, warning=F, message=FALSE}
+#===============================
+# Poisson model for incidence in each period of time
+#===============================
+m<-glm(events ~ -1+factor(period),
+       family=poisson,offset=log(pyrs),data=speriod)
+round(ci.lin(m,Exp=TRUE)[,-(3:4)],6)
+#1-year cumulative hazard 
+Lambda_1yr<- sum(exp(m$coefficient[1:4])*c(100,100,100,65))
+#1-year survival in percentages
+exp(-Lambda_1yr)*100
+```
+
+# Estimation of the survival function $S(t)$
+
+\scriptsize
+
+```{r, comment=NA,echo=T, warning=F, message=FALSE}
+m <- survfit(formula = Surv(time, status) ~ trt, data = veteran)
+m2 <- summary(m)
+m2 <- data.frame(lapply(c(10,2:6) , function(x) m2[x]))
+m2[m2$time<10,]
+```
+
+::: columns
+::: {.column width="50%"}
+-   trt=1
+
+```{=tex}
+\begin{enumerate}[ ]
+\item $S(0)=1$\\
+\item $S(3)=S(0)\times(1-1/69)=0.986$\\
+\item $S(4)=S(3)\times(1-1/68)=0.971$
+    
+\end{enumerate}
+```
+:::
+
+::: {.column width="50%"}
+-   trt=2
+
+```{=tex}
+\begin{enumerate}[ ]
+\item $S(0)=1$\\
+\item $S(1)=S(0)\times(1-2/68)=0.971$\\
+\item $S(2)=S(1)\times(1-1/66)=0.956$
+
+\end{enumerate}
+```
+:::
+:::
+
+# Plot of Survival curve for Veteran data
+
+\scriptsize
+
+```{r, comment=NA,echo=T, warning=F, message=FALSE, fig.height=6.0}
+library(survminer)
+ggsurvplot(m, pval = TRUE, conf.int = TRUE, risk.table = TRUE)
+```
+
+# Regression models for time-to-event data: Cox model
+
+Baseline hazard $\lambda_0(t,\alpha)$ may be given a parametric form (\textit{e.g.} Weibull) or a piecewise constant rate (exponential) structure.
+
+\bigskip
+
+Often a parameter-free form $\lambda_0(t)$ is assumed. Then $$
+  \lambda_i(t) = \lambda_0(t) \exp(\eta_1),
+$$ specifies the \textbf{Cox model} or the \textbf{semiparametric proportional hazards model}.
+
+\bigskip
+
+$\eta_i = \beta_1 x_{i1} + \dots + \beta_p x_{ip}$ not depending on time.
+
+\bigskip
+
+Generalizations: \textbf{time-dependent} \newline covariates $x_{ij}(t)$, and/or effects $\beta_j(t)$.
+
+# PH model: interpretation of parameters
+
+Present the model explicitly in terms of $x$'s and $\beta$'s. $$
+\lambda_i(t) = \lambda_0(t)  \exp({\beta_1 x_{i1} + \dots +
+\beta_p x_{ip}})
+$$ Consider two individuals, $i$ and $i'$, having the same values of all other covariates except the $j^{\text{th}}$ one.
+
+\bigskip
+
+The ratio of hazards is constant: $$  \frac{\lambda_i(t)}{\lambda_{i'}(t)} = \frac{\exp( \eta_{i}) }{\exp(\eta_{i'})}
+= \exp \{ \beta_j(x_{ij}-x_{i'j}) \} . $$ Thus $e^{\beta_j} = \text{HR}_j$ = \textbf{hazard ratio} or relative rate associated with a unit change in covariate $X_j$.
+
+# Ex. Veteran data and treatment effect
+
+Fitting Cox models with trt effect. \scriptsize
+
+```{r, comment=NA,echo=T, warning=F, message=FALSE, fig.height=4.5}
+m <- coxph(formula = Surv(time, status) ~ trt, data = veteran)
+summary(m)
+```
+
 \normalsize
 
-Estimation adjusted for age
-\small
-```{r, comment=NA,echo=T}
-mod2 <- update(mod1, . ~ . + agr)
+HR for treatment 2 vs. 1 is 1.02 (95% CI 0.71;1.45) \newline Not statistically significant (p=0.92)
+
+# Proportionalilty of hazards?
+
+```{=tex}
+\begin{itemize}
+\item
+Consider two groups $g$ and $h$ defined by one categorical covariate, and let $\rho > 0$. 
+\medskip
+If $\lambda_g(t) = \rho \lambda_h(t)$  then 
+$\Lambda_g (t) = \rho \Lambda_h(t)$ and
+$$ \log\: \Lambda_g  (t)  = \log (\rho) + \log\: \Lambda_h (t), $$
+thus log-cumulative hazards should be parallel!
+\end{itemize}
+\begin{enumerate}[$\Rightarrow$]
+\item
+\textit{Plot the estimated log-cumulative hazards and see
+whether they are sufficiently parallel}.
+\end{enumerate}
+\begin{itemize}
+\item
+\texttt{plot(coxobj, ..., fun = 'cloglog')}
+\medskip
+\item
+Testing the proportionality assumptions: \texttt{cox.zph(coxobj)}.
+\end{itemize}
 ```
+
+# Ex. Veteran data - test PH
+
+```{=tex}
+\begin{itemize}
+\item With $>1$ covariates, \texttt{cox.zph()} tests the assumption by checking, whether the corresponding parameters (\& hazard ratios) may vary in time.
+\item Suppose that I want to include information on patient baseline general disease status -- Karnofsky performance score (0=dead, 100=good)
+\item Dichotomize the Karnofsky score 0 if Score $[$0,50 $]$ and 1 if $($50,100$]$
+\end{itemize}
+```
+
+# Ex. Veteran data - test PH
+
+\scriptsize
+
+```{r, comment=NA,echo=T, warning=F, message=FALSE, fig.height=4.5}
+veteran$karnod<-as.numeric(veteran$karno>50)
+m <- coxph(formula = Surv(time, status) ~ trt+ karnod, 
+           data = veteran)
+m
+```
+
+# Ex. Veteran data - test PH
+
+\scriptsize
+
+```{r, comment=NA,echo=T, warning=F, message=FALSE, fig.height=4.5}
+#testing proportionality
+cox.zph(m)
+```
+
+Test for proportionality are significant (p\<0.05) -- assumptions of proportionality of hazards is rejected for the score variable -- stratify baseline hazard by the score
+
+
+
+# Ex. Veteran data - test PH
+
+\scriptsize
+
+```{r, comment=NA,echo=T, warning=F, message=FALSE, fig.height=4.5}
+m <- coxph(formula = Surv(time, status) ~ trt+strata(karnod), 
+           data = veteran)
+m
+cox.zph(m)
+```
+
+Test for proportionality is not significant (p\>0.05) \newline HR for treatment effect is 1.01 95% CI (0.71 ;1.45)
+
+# Competing events & competing risks
+
+In many epidemiological and clinical contexts there are competing events that may occur before the target event and remove the person from the population at risk for the event, \textit{e.g.}
+
+```{=tex}
+\begin{itemize}
+\item \textit{target event}: occurrence of endometrial cancer,
+ \textit{competing events}: hysterectomy or death.
+\medskip
+\item \textit{target event}: relapse of a disease \\
+(ending the state of remission), \\
+ \textit{competing event}: death while still in remission.
+ 
+\item \textit{target event}: divorce, \\ 
+ \textit{competing event}: death of either spouse.
+ 
+\end{itemize}
+```
+# Competing risks model: causes of death
+
+```{=tex}
+\begin{itemize}
+\item
+Often the interest is focused on the risk or hazard of dying 
+from one specific cause.
+\medskip
+\item
+That cause may eventually not be realized, because
+a \textbf{competing cause} of death hits first.
+
+\bigskip
+
+\begin{center}
+\setlength{\unitlength}{0.65pt}
+\begin{picture}(400,190)
+  \thicklines
+  \put(  0, 80){\framebox(120,50){Alive}}
+  \put(230,130){\framebox(180,50){Dead from cancer}}
+  \put(230, 30){\framebox(180,50){Dead, other causes}}
+  \put(135,125){\vector(3, 1){90}}
+  \put(135, 85){\vector(3,-1){90}}
+  \put(165,157){\makebox(0,0)[b]{$\lambda_1(t)$}}
+  \put(165, 53){\makebox(0,0)[t]{$\lambda_2(t)$}}
+\end{picture}
+\end{center}
+\item
+ Generalizes to several competing causes.
+ \end{itemize}
+```
+# Event-specific quantities
+
+\textbf{Cumulative incidence function} (CIF) for event $c$: $$  F_c(t) = P(T \leq t \text{ and } C = c ), \quad c = 1,2.  $$
+
+\medskip
+
+From this one can recover
+
+```{=tex}
+\begin{itemize}
+\item
+$F(t) = \sum_{c} F_c(t)$, CDF of event-free survival time $T$, \textit{i.e.} 
+cumulative risk of any event by $t$.
+\medskip
+\item
+$S(t) = 1 - F(t)$, \textbf{event-free survival function}, \textit{i.e.} probability of avoiding all events by $t$
+\end{itemize}
+```
+# Event-specific quantities (cont'd)
+
+\textbf{Event-} or \textbf{cause-specific hazard function} \begin{align*}
+ \lambda_c(t) & =  \underset{\Delta\to 0}{\lim} 
+    \frac{P(t < T \le t+\Delta \text{ and } C = c \mid T > t)}{\Delta}  \\
+        & =  \frac{f_c(t)}{1-F(t)}
+\end{align*}
+
+```{=tex}
+\begin{enumerate}[$\approx$]
+\item Risk of \textit{event} $c$ 
+in a short interval $(t, t+ \Delta]$,  given 
+\textit{avoidance of all events} up to $t$, 
+per interval length.
+\end{enumerate}
+```
+```{=tex}
+\begin{itemize}
+\item CIF = risk of event $c$ over risk period $[0,t]$ in the presence of competing risks, also obtained 
+$$ F_c(t) = \int_0^t \lambda_c(v) S(v) dv, \quad c = 1,2, $$
+\item
+Depends on the hazard of the competing event, too, 
+via 
+\begin{align*} 
+S(t) & = \exp\left\{ - \int_0^t [\lambda_1(v) + \lambda_2(v)]dv 
+ \right\} .
+\end{align*}
+\end{itemize}
+```
+# Non-parametric estimation of CIF
+
+```{=tex}
+\begin{itemize}
+\item
+Let $t_1 < t_2 < \dots < t_K$ be the $K$ distinct 
+time points at which any outcome event was observed, \\ Let also
+ $\widetilde{S}(t)$ be KM estimator for overall $S(t)$. 
+\medskip
+\item
+\textbf{Aalen-Johansen estimator} (AJ) for the cumulative incidence function $F(t)$
+is obtained as
+$$ 
+\widetilde{F}_c(t) 
+   = \sum_{t_k \leq t} \frac{D_{kc}}{n_k} \times \widetilde{S}(t_{k-1}),
+   \quad\text{where}
+$$
+$n_k$ = size of the risk set at $t_k$ $(k=1, \dots, K)$,
+\\
+$D_{kc}$ = no. of cases of event $c$ observed  at $t_k$.
+\medskip
+\item
+\textbf{N.B.} Naive KM estimator of ``cause-specific survival'' treats  
+competing events occuring first as censorings.
+\end{itemize}
+```
+# Ex. Survival of 338 oral cancer patients
+
+Important variables:
+
+```{=tex}
+\begin{itemize}
+\item \texttt{time} = duration of patientship from \\ 
+ diagnosis (\textbf{entry}) till death or censoring, 
+\medskip
+\item
+\texttt{event} = indicator for the outcome and its \\
+ observation at the end of follow-up (\textbf{exit}): \\
+  0 = censoring,  \\
+  1 = death from oral cancer, \\
+  2 = death from some other cause.
+\end{itemize}
+```
+\medskip
+
+Special features:
+
+```{=tex}
+\begin{itemize}
+\item
+   Several possible endpoints, \textit{i.e.} alternative causes of death, of which
+   only one is realized.
+   \medskip
+\item
+   Censoring -- incomplete observation of the survival time.   
+\end{itemize}
+```
+# Ex. Oral cancer data
+
+```{r, comment=NA,echo=T}
+orca <- read.table(file="oralca2.txt")
+head(orca)
+```
+
+# Ex. Survival from oral cancer
+
+```{=tex}
+\begin{itemize}
+\item
+Creating a {\tt Lexis} object with two outcome events and \\ 
+obtaining a summary of transitions
+\end{itemize}
+\scriptsize
+```
+```{r, comment=NA,echo=T,message=FALSE,warning=FALSE,results='hide'}
+library(Epi)
+orca.lex <- Lexis(exit = list(stime = time), 
+           exit.status = factor(event, 
+    labels = c("Alive", "Oral ca. death", "Other death") ),
+                  data = orca)
+summary(orca.lex)  
+```
+
+```{r, comment=NA,echo=F,message=FALSE,warning=FALSE}
+summary(orca.lex)  
+```
+
+# Box diagram for transitions
+
+Interactive use of function \tt boxes().
+\small
+```{r, comment=NA,echo=T,message=FALSE,warning=FALSE,eval=FALSE}
+boxes(orca.lex)
+```
+
+```{=tex}
+\begin{center}
+\includegraphics[height=6cm]{orca-boxes}
+\end{center}
 \normalsize
-
-Goodness-of-fit evaluation
-\small
-```{r, comment=NA,echo=T}
-c( mod2$deviance, mod2$df.res )
 ```
-\normalsize
+# Ex. Survival from oral cancer
 
-
-
-# Example. Estimation by \texttt{glm()} (cont'd)
-
-Estimation results after adjusting for age
-\small
-```{r, comment=NA,echo=T}
-round(ci.lin(mod2, Exp=T)[ , -(3:4)], 4)
+```{=tex}
+\begin{itemize}
+\item
+AJ-estimates of CIFs (solid) for both causes.
+\item
+Naive KM-estimates of CIF (dashed) $>$ AJ-estimates 
+\item
+CIF curves may also be stacked (right).  
+\end{itemize}
 ```
+\includegraphics[width=10cm]{orcaCI1}
 
+\textbf{NB.} The sum of the naive KM-estimates of CIF exceeds 100% at 13 years!
 
+# Warning of "net risk" and "cause-specific survival"
 
-# Matched case-control study
-
-Matching
-
-- For each case choose 
-    1 or more (rarely over $4$) controls with
-      same age (\textit{eg.} within 1 year, 
-      or in the same 5-year ageband), 
-      sex, place of living, \textit{etc.} 
-      \medskip
-- Implies stratification in design: 
-each matched case-control set forms one stratum.
-    \medskip
-- Improves efficiency of the study & estimation of 
-effect parameters, if matching factors are 
-   strong determinants of outcome.
-
-
-# Matched case-control study (cont'd)
-
-Some principles
-
-- Impractical to match on many other covariates than those mentioned,
-\medskip
-- Matching on a correlate $Z$ of risk factor $X$ of interest, which is not 
-	causal determinant of outcome \newline
-	 $\Rightarrow$ overmatching, loss of efficiency.
-	\medskip
-- \textit{Counter-matching}: Choose controls which are different from
-	case w.r.t. $Z$, close correlate of $X$ \newline
-	 $\Rightarrow$ increases efficiency.
-
-
-
-# Matched case-control study (cont'd)
-
-- \textit{Matched design $\Rightarrow$ matched analysis!}
-\medskip
-- Ignoring matching in analysis my lead to biased results.
-\medskip
-- Matching factors must always be accounted 
-for in estimating the rate ratios of interest. 
-\medskip
-- With very close matching (based \texttt{e.g.} on sibship, neighbourhood)
- use \textit{conditional logistic regression} \newline modelling \newline
- -- function \texttt{clogit()} in package \texttt{survival}
-
-# Full cohort design
-
-Each member of the cohort provides exposure data for all
-cases, as long as this member is at risk, i.e. alive, not censored
-& free from outcome.
-
+```{=tex}
+\begin{itemize}                              
+\item
+The ``\textbf{\textit{net risk}}'' of outcome $c$ by time $t$, 
+assuming hypothetical elimination of competing risks,
+is often defined as
 \begin{center}
-\includegraphics[height=2in]{lect6_full_cohort}
+$ F_c^*(t) = 1 - S_c^*(t) = 1- \exp\left\{ - \int_0^t [\lambda_c(v)]dv \right\} $
 \end{center}
-
-Times of new cases define the \textbf{risk-sets}. 
-
-- Use e.g. function \texttt{coxph()}
-
-
-# Nested case-control design
-
-Whenever a new case occurs, a set of controls
-(here 2/case) are sampled from its risk set. Implies time-matching at least.
-
-
-\begin{center}
-\includegraphics[height=2in]{lect6_ncc}
-\end{center}
-
-
-
-\textbf{NB.} A control once selected for some case can be selected as a
-control for another case, and can later on become a case, too.
-
-- Analyse using function \texttt{clogit()}
-
-# Case-cohort design
-
-\textbf{Subcohort:} Sample of the whole cohort randomly selected at
-the outset. Serves as reference group for all cases.
-
-
-\begin{center}
-\includegraphics[height=2in]{lect6_cch}
-\end{center}
-
-
-
-\textbf{NB.} A subcohort member can become a case, too.
-
-- Analyse using function \texttt{cch()} 
-
-
-# Concluding remarks
-
-- Analysis using \texttt{glm()} on individual data records from 
-an unmatched study proceeds similarly as for grouped data.
 \medskip
-- Matched design $\to$ matched analysis by \texttt{clogit()}.
+\item
+In clinical survival studies, function 
+$S_c^*(t)$ is often called ``\textbf{\textit{cause-specific survival}}'',
+and estimated by KM, but treating competing deaths
+as censorings.
 \medskip
-- More complicated designs, like counter-matched and two-phase studies,
-require specialized methods and progamming.
+\item
+Yet, these *-functions, $ F_c^*(t)$ and $S_c^*(t)$, lack proper probability interpretation when
+ competing risks exist.
 \medskip
-- Case-cohort design: Use function \texttt{cch()} in package \texttt{survival}
-that adjusts standard errors \textit{etc.} appropriately.  
-
-
-
-
+\item
+Hence, their use and naive KM estimation should be viewed critically
+(Andersen \& Keiding, \textit{Stat Med}, 2012)
+\end{itemize}
+```
