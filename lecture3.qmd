@@ -32,25 +32,26 @@ Main R functions covered:
 
 Summarized data on outcome from cohort study, in which two exposure groups, as to binary risk factor $X$, have been followed-up over individually variable times.
 
+```{=tex}
 \begin{center}
 \begin{tabular}{ccc}
 Exposure to         &     Number of       &    Person-\\ 
- risk factor        &        cases        &        time\\
+ risk factor        &        cases        &        time\\ \hline
       yes        &                        $D_{1}$ &        $Y_{1}$  \\
-      no         &                        $D_{0}$  &        $Y_{0}$\\
+      no         &                        $D_{0}$  &        $Y_{0}$\\ \hline
      total        &                        $D_{+}$  &  $Y_{+}$\\
 \end{tabular}
 \end{center}
-
+```
 Empirical **incidence rates** by exposure group: $$ I_1 = {D_1}/{Y_1}, \qquad
-    I_0 = {D_0}/{Y_0}. $$ These provide estimates for the true {\bf hazards} (or hazard rates) $\lambda_1$ and $\lambda_0$ assumed constant within exposure categories.
+    I_0 = {D_0}/{Y_0}. $$ These provide estimates for the true **hazards** (or hazard rates) $\lambda_1$ and $\lambda_0$ assumed constant within exposure categories.
 
 # Hazards and their comparison
 
 Parameters of interest:
 
 -   **hazard ratio** $$ \rho = \frac{\lambda_1}{\lambda_0} = 
-    \frac{hazard  among  exposed } {hazard  among  unexposed}. $$
+    \frac{\text{hazard  among  exposed}} {\text{hazard  among  unexposed}}. $$
 
 -   **hazard difference** $$\delta = \lambda_1 - \lambda_0$$
 
@@ -86,13 +87,18 @@ $$ CI  =  [ \mbox{ID} - EM ,\ \mbox{ID} + EM ]$$ NB. Random error again depends 
 
 # Example. British doctors' study (Doll & Hill 1966)
 
-CHD mortality in males by smoking and age.\\ Cases ($D$), person-years ($Y$), and mortality rates ($I$ per $10^4$ y).
+CHD mortality in males by smoking and age.
 
+Cases ($D$), person-years ($Y$), and mortality rates ($I$ per $10^4$ y).
+
+```{=tex}
 \begin{center}
 \begin{tabular}{@{\extracolsep{6pt}}lrrrrrr}
+\hline
 \multicolumn{1}{c}{ } & 
 \multicolumn{3}{c} {Smokers}         &        
 \multicolumn{3}{c} {Non-smokers}  \\
+\cline{2-4}\cline{5-7}
 Age(y) & $D$ & $Y$ &    $I$ & $D$ & $Y$ &  $I$ \\ \hline
 35-44  & 32  & 52407  & 6   & 2   & 18790 & 1 \\
 45-54  & 104 & 43248  & 24  & 12  & 10673 & 11 \\
@@ -101,7 +107,7 @@ Age(y) & $D$ & $Y$ &    $I$ & $D$ & $Y$ &  $I$ \\ \hline
 75-84  & 102 & 5317   & 192 & 31  & 1462  & 212 \\ \hline
 Total  & 630 & 142247 & 44  & 101 & 39220 &  26 \\ \hline \end{tabular}
 \end{center}
-
+```
 # Example (cont'd).
 
 Crude incidence rates: \newline $\qquad I_1 = 630/142247 \ \mbox{y} = 44.3$ per $10^4$ y, and $\qquad I_0 = 101/39220 \ \mbox{y}\ = 25.8$ per $10^4$ y.
@@ -113,9 +119,7 @@ $$\widehat\rho   =  \mbox{IR} = \frac{ 44.3 }{ 25.8 } = {\bf 1.72} $$
 $$SEL  =  \sqrt{ \frac{1}{630} +  \frac{1}{101} } = {\bf 0.1072} $$ $$EF  =  \exp(1.96\times 0.1072) =  {\bf 1.23}$$
 
 95% CI for $\rho$:
-
 $$ [ 1.72/1.23, \ 1.72\times 1.23 ]= [{\bf 1. 39},\ {\bf 2.12}] $$
-
 Two-tailed P \< 0.001 .
 
 # Poisson regression model for rate ratio
@@ -128,10 +132,7 @@ Two-tailed P \< 0.001 .
 
 Interpretation, \newline
 
--   $X_j=$ $\begin{cases}
-          1  & \text{if exposed } (j=1), \\
-              0  & \text{if unexposed } (j=0),\\
-          \end{cases}$
+-   $X_j=$ $\begin{cases} 1 & \text{if exposed } (j=1), \\ 0 & \text{if unexposed } (j=0),\\ \end{cases}$
 
 -   $\alpha=$ $\log(\lambda_0)$, log-baseline rate,
 
@@ -185,7 +186,7 @@ coef(summary(m1))
 
 Main results:
 
--   $\widehat\alpha =  -5.96 = \log(25.8/10^4 \mbox{ y}), \quad$ (SE = 0.10),
+-   $\widehat\alpha = -5.96 = \log(25.8/10^4 \mbox{ y}), \quad$ (SE = 0.10),
 
 -   $\widehat\beta = 0.54 = \log(1.72), \quad$ (SE = 0.11)
 
@@ -204,8 +205,7 @@ The Poisson model above can also be fitted as follows:
 
 glm(d \~ smok, fam =poisson(), offset=log(y))
 
-Here `offset` refers to the logarithm of person-years `y` in formula for expected numbers of cases $\mu_j = \lambda_j \times Y_j$: 
-$$ 
+Here `offset` refers to the logarithm of person-years `y` in formula for expected numbers of cases $\mu_j = \lambda_j \times Y_j$: $$ 
 \log(\mu_j)  =  \log(\lambda_j Y_j) 
              =   \log(Y_j) + \log(\lambda_j)  
              =  \log(Y_j) + \alpha + \beta X_j , 
@@ -217,6 +217,7 @@ $\log(Y_j)$ is an **offset** term in the linear predictor, meaning that it has a
 
 Stratification of cohort data with person-time \newline -- at each level $k$ of covariate $Z$ results are summarized:
 
+```{=tex}
 \begin{center}
 \begin{tabular}{ccc}
 Exposure to & Number of         & Person- \\
@@ -226,13 +227,13 @@ risk factor & cases       & time\\ \hline
 Total       & $D_{+ k}$  & $Y_{+ k}$ \\
 \end{tabular}
 \end{center}
-
+```
 Stratum-specific rates by exposure group: $$ I_{1k}  = \frac{ D_{1k} }{ Y_{1k} } , \qquad
    I_{0k}  = \frac{ D_{0k} }{ Y_{0k} } .$$
 
 # Stratum-specific comparisons
 
-Let $\lambda_{jk}$ be true rate for exposure group $j$ ($j=0,1)$\newline  and stratum $k$ ($k=0, \dots, K$). Let also $$ \rho_k = \frac{ \lambda_{1k} } { \lambda_{0k} }, \qquad \delta_k = \lambda_{1k} - \lambda_{0k}$$
+Let $\lambda_{jk}$ be true rate for exposure group $j$ ($j=0,1)$\newline and stratum $k$ ($k=0, \dots, K$). Let also $$ \rho_k = \frac{ \lambda_{1k} } { \lambda_{0k} }, \qquad \delta_k = \lambda_{1k} - \lambda_{0k}$$
 
 be the rate ratios and rate differences between the exposure groups in stratum $k$.
 
@@ -260,14 +261,14 @@ dbs$IR[dbs$smok==1]<-round(dbs$rate[dbs$smok==1]/dbs$rate[dbs$smok==0],1)
 tot1<-c("35-84",1, sum(dbs$d[dbs$smok==1]), sum(dbs$y[dbs$smok==1]),round(10000*(sum(dbs$d[dbs$smok==1])/sum(dbs$y[dbs$smok==1]))),0.0,1.0)
 tot0<-c("35-84",0, sum(dbs$d[dbs$smok==0]), sum(dbs$y[dbs$smok==0]),round(10000*(sum(dbs$d[dbs$smok==0])/sum(dbs$y[dbs$smok==0]))),0.0,1.0)
 dbs<-rbind(dbs,tot1,tot0)
-dbs[order(dbs$age,dbs$smok),]
+dbs[order(dbs$age,dbs$smok),][-c(3,4),]
 ```
 
 \normalsize
 
 # Example (cont'd).
 
--Both types of comparative parameter, rate ratios $\rho_k$ and rate differences $\delta_k$ appear heterogenous, because
+Both types of comparative parameter, rate ratios $\rho_k$ and rate differences $\delta_k$ appear heterogenous, because
 
 -   ID increases by age -- at least up to 75 y,
 
@@ -275,9 +276,7 @@ dbs[order(dbs$age,dbs$smok),]
 
 -   Part of this observed heterogeneity may be due to random variation.
 
--   Yet, any single-parameter comparison by common rate ratio or rate difference
-
-may not adequately capture the joint pattern of true rates.
+-   Yet, any single-parameter comparison by common rate ratio or rate difference may not adequately capture the joint pattern of true rates.
 
 $\quad \Rightarrow$ Effect modification must be evaluated.
 
@@ -287,11 +286,11 @@ Define Poisson regression model for
 
 -   one binary exposure variable $X$ and
 -   one categorical (polytomous) factor $Z$.
-    -   *Random part*: No. of cases in exposure group $j$ $(j=0,1)$ and covariate level $k$ $(k = 1, \dots, K)$ is $D_{jk} \sim Poisson( \lambda_{jk} Y_{jk} )$
+    -   *Random part*: No. of cases in exposure group $j$ $(j=0,1)$ and covariate level $k$ $(k = 1, \dots, K)$ is $D_{jk} \sim \text{Poisson}( \lambda_{jk} Y_{jk} )$
     -   *Systematic part*: $log(\lambda_{jk}) = \alpha + \beta X_j + \gamma_k,$ where $X_j$ is (0/1)
 -   $\alpha=\log(\lambda_{01})$ = log-baseline rate,
 -   $\gamma_k=$ $\log(\lambda_{jk}/\lambda_{j1})$,
--   $\beta=$ $\log(\rho)=log(\lambda_{1k}/\lambda_{0k})$,
+-   $\beta=$ $\log(\rho)=\log(\lambda_{1k}/\lambda_{0k})$,
 -   $e^{\beta}=$ $\rho$ = true rate ratio for the effect of exposure to $X$.
 
 *How do we read this?*
@@ -349,9 +348,9 @@ $\Rightarrow$ Age-adjusted rate ratio \[95% CI\] for smoking: $$\widehat \rho = 
 
 # Fitted values & residuals
 
-From the estimated coefficients we can calculate \newline **fitted** linear predictors $\widehat \eta_{jk}$, hazards $\widehat \lambda_{jk}$ and numbers $\widehat \mu_{jk}$: $$ \widehat \eta_{jk}  =  \widehat\alpha + \widehat\beta x + \widehat\gamma_k $$ $$ \widehat \lambda_{jk}  =  \mbox{exp}(\widehat \eta_{jk}), \quad \widehat\mu_{jk} = \widehat\lambda_{jk} Y_{jk} $$
+From the estimated coefficients we can calculate **fitted** linear predictors $\widehat \eta_{jk}$, hazards $\widehat \lambda_{jk}$ and numbers $\widehat \mu_{jk}$: $$ \widehat \eta_{jk}  =  \widehat\alpha + \widehat\beta x + \widehat\gamma_k $$ $$ \widehat \lambda_{jk}  =  \mbox{exp}(\widehat \eta_{jk}), \quad \widehat\mu_{jk} = \widehat\lambda_{jk} Y_{jk} $$
 
-In R the two first can be extracted directly from the\\ fitted model object `m2`: \small
+In R the two first can be extracted directly from the fitted model object `m2`: \small
 
 ```{r, comment=NA,echo=T,warning=FALSE}
   bd$fit.eta <- m2$linear.predictor
@@ -365,7 +364,9 @@ In R the two first can be extracted directly from the\\ fitted model object `m2`
 
 # Fitted values & residuals (cont'd)
 
-**Deviance residual** for cell $jk$ (`resid(m2)` in R): $$ d_{jk}  =  \mbox{sign}(Y_{jk} - \widehat\mu_{jk}) 
+**Deviance residual** for cell $jk$ (`resid(m2)` in R): 
+$$ 
+d_{jk}  =  \mbox{sign}(Y_{jk} - \widehat\mu_{jk}) 
                     \times 
                    \sqrt{ 2 \left\lbrace
                          Y_{jk} \log \left( \frac{ Y_{jk} }{ \widehat\mu_{jk} } \right)
@@ -373,7 +374,7 @@ In R the two first can be extracted directly from the\\ fitted model object `m2`
 $$
 
 **Pearson residual** (`resid(m2, type="pearson")`): $$ r_{jk} = \frac{ Y_{jk} -  \widehat\mu_{jk} }
-          {\sqrt{  \widehat\mu_{jk} } } . $$ Small value of either residual\newline   $\rightarrow$ consistency of observation with model.
+          {\sqrt{  \widehat\mu_{jk} } } . $$ Small value of either residual\newline $\rightarrow$ consistency of observation with model.
 
 \`\`Large'' (in absolute value) residual\newline $\rightarrow$ lack of fit for that cell.
 
@@ -405,7 +406,7 @@ Assume that
 Under these assumptions
 
 -   residuals $d_{jk}$ and $r_{jk}$ all approximately Normal(0,1),
--   Both Dev and $X^2$ are approximately $\chi^2$-distributed with *degrees of freedom* (df) being equal to the \newline *residual* df = no. of obs -- no. of coeff's
+-   Both Dev and $X^2$ are approximately $\chi^2$-distributed with *degrees of freedom* (df) being equal to the *residual* df = (number of observations -- number of coefficients)
 -   Expected value of these statistics = residual df.
 
 # Goodness of fit (cont'd)
@@ -422,9 +423,12 @@ $\rightarrow$ Some lack of fit with assumed model.
 # Possible causes for lack of fit
 
 -   Unrealistic random part (Poisson)?
--   Misspecified systematic part? - Wrong functional form for effects? \medskip - Missing important risk factors? \medskip - Failure to take into account *effect modification* or "interaction".
+-   Misspecified systematic part?
+    -   Wrong functional form for effects?
+    -   Missing important risk factors?
+    -   Failure to take into account *effect modification* or "interaction".
 
-In this example the last possibility is very likely: \newline  the rate ratios are clearly heterogenous.
+In this example the last possibility is very likely: \newline the rate ratios are clearly heterogenous.
 
 Yet, inclusion of 4 interaction parameters would lead to a saturated model.
 
@@ -445,7 +449,7 @@ $\Rightarrow$ loss of efficiency.
 
 Regression models can accommodate functions of continuous variables
 
--   (+) more parsimonious models, \medskip 
+-   (+) more parsimonious models, \medskip
 -   (+) greater flexibility in modelling, \medskip
 -   (-) more opportunities for misspecification, *i.e.* creation of "wrong" models.
 
@@ -464,12 +468,12 @@ This is achieved by
 
 ```{r, comment=NA,echo=T,warning=FALSE}
 bd$A.L <- as.numeric(as.factor(bd$age))-3 
-bd$A.Q <- bd$A.L*bd$A.L - 2
+bd$A.Q <- bd$A.L*bd$A.L 
 ```
 
 \normalsize
 
-# Example (cont'd)}
+# Example (cont'd)
 
 Model with linear and quadratic terms for age, and interaction between linear term of age and smoking: \small
 
@@ -506,7 +510,8 @@ Residual Dev = 1.64 df = 5; The fit is excellent!
 # Some closing remarks
 
 -   **Hazard differences** can also be estimated by Poisson-modelling, because `link='identity'` can be coupled with `family=poisson` in `glm()`.
+    -   With continuous covariates it may be difficult to keep hazards positive when the *additive hazards* model with `link='identity'` is attempted to be fitted.
 -   Poisson models can also be fitted on **ungrouped data**. Units of observations may even be shorter intervals of total individual follow-up times:
--   Each member of the study population can contribute several **separate time-slots** as observational units.
--   More about **time-splitting** in the next lectures.
--   With continuous covariates it may be difficult to keep hazards positive when the *additive hazards* model with `link='identity'` is attempted to be fitted.
+    -   Each member of the study population can contribute several **separate time-slots** as observational units.
+    -   More about **time-splitting** in the next lectures.
+
