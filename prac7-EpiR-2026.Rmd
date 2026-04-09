@@ -9,8 +9,9 @@ output:
   word_document: default
   pdf_document: default
 subtitle: Practicals 7
+editor_options: 
+  chunk_output_type: console
 ---
-
 
 
 ```{r p7_0, include=FALSE}
@@ -26,283 +27,290 @@ options(warn=-1)
 
 Learning objectives of this practical
 
-*   Estimating Kaplan-Meier (``survfit``) and lifetable (``survtab``)
-*   Estimating age-standardised survival (``survtab``)
-*   Use proportional hazards model (``coxph`` and ``glm``)
-*   Test for the assumption of proportional hazards
+*   Compare estimates and interpretations of different survival measures (overall, cause-specific and relative survival, and 1-cumulative incidence)
+*   Age standardisation of relative survival
+*   Piecewise constant excess hazard model for relative survival
 
 
-# Survival analysis: Oral cancer patients
+# Survival analysis: Rectal cancer patients
 
 
 ## Description of the data
 
 
-File ``oralca2.txt`` contains data from 338
-patients having an oral squamous cell carcinoma diagnosed and treated
-in one tertiary level oncological clinic in Finland since 1985, followed-up
-for mortality until 31 December 2008.
+Data frame ``sire`` includes observations of a simulated cohort of 8243 female Finnish rectal cancer patients diagnosed between 1993-2012.
 The dataset contains the following variables:
 
 variable    | description
 ----------- | --------------------
-sex         |a factor with categories: 1 = "Female", 2 = "Male",    
-age         |in years at the date of diagnosing the cancer,  
-stage       |TNM stage of the tumour (factor): 1 = "I", ..., 4 = "IV", 5 = "unkn", 
-time        |follow-up time (in years) since diagnosis until death or censoring,
-event       |status at the end of follow-up (numeric): \newline 0 = censoring alive, 1 = death from oral cancer, 2 = death from other causes. 
+sex         | 0 = Male, 1 = Female   
+bi_date     |date of birth  
+dg_date     |date of cancer diagnosis 
+ex_date     |date of exit from follow-up (death or censoring)
+status      |status at the end of follow-up (numeric): \newline 0 = alive, 1 = death from rectal cancer, 2 = death from other causes. 
+dg_age      | age at diagnosis (in fractional years)
 
             
 
 ## Loading the packages and the data
 
 
-Load the R packages ``Epi``, ``mstate``, and ``survival`` needed in this exercise.
-```{r p7_1, eval=TRUE,echo=TRUE,warnings=FALSE}
+Load the R packages ``Epi`` and ``popEpi`` needed in this exercise.
+```{r p9_1, eval=TRUE,echo=TRUE,warnings=FALSE, message=FALSE, results='hide'}
 library(Epi)
-library(mstate)
-library(survival)
-```
-
-Read the datafile ``oralca2.txt`` into an R data frame named orca. 
-
-Look at the head, structure and the summary of the data frame. Using function ``table()`` count the numbers of censorings as well as deaths from oral cancer and other causes, respectively, from the event variable.
-
-```{r p7_2, eval=TRUE,echo=TRUE,warnings=FALSE}
-orca <- read.csv("oralca2.txt", sep="")
-head(orca)
-```
-
-## Total mortality: Kaplan--Meier analyses
-
-
-We start our analysis of total mortality pooling the two causes of death into
-a single outcome.
-First, construct a *survival object* ``orca$suob`` from
-the event variable and the follow-up time using function ``Surv()``.
-Look at the structure and summary of ``orca$suob``.
-
-```{r p7_3, eval=TRUE,echo=TRUE,warnings=FALSE}
-# all deaths
-orca$suob <- Surv(orca$time, 1*(orca$event > 0) )
-str(orca$suob)
-summary(orca$suob)
-```
-
-
-Create a survfit object ``s.all``, which does the
-default calculations for a Kaplan--Meier
-analysis of the overall (marginal) survival curve.
-
-```{r p7_4, eval=TRUE,echo=TRUE,warnings=FALSE}
-s.all <- survfit(suob ~ 1, data=orca)
-```
-
-See the structure of this object and apply ``print()`` method on it, too. Look at the results; what do you find?
-
-```{r p7_5, eval=TRUE,echo=TRUE,warnings=FALSE}
-s.all
-str(s.all)
-```
-
-The ``summary`` method for a  ``survfit`` object would return a lengthy life table. However, the ``plot`` method with default arguments offers the Kaplan--Meier curve
-for a conventional illustration of the survival experience in the whole patient group.
-
-Alternatively, instead of graphing survival proportions,
-one can draw a curve describing their complements: the cumulative mortality proportions. This curve is drawn together with the survival curve as the
- result of the second command line below.
-
-```{r p7_6, eval=TRUE,echo=TRUE,warnings=FALSE}
-plot(s.all)
-lines(s.all, fun = "event", mark.time=F, conf.int=F)
-```
-
-The effect of option ``mark.time=F`` is to omit
-marking the times when censorings occurred.
-
-Alternatively, use lifetable (actuarial) method in survtab function of popEpi package
-
-```{r p7_61, eval=TRUE,echo=TRUE,warnings=FALSE}
 library(popEpi)
-library(Epi)
-
-lex <- Lexis(exit = list(FUT = time),
-             exit.status = (event>0)*1,
-             data = orca[,-6], merge= T)
-
-# lifetable estimated in annual intervals from 0 to 25 years
-st <- survtab(Surv(time = FUT, event = lex.Xst) ~ 1, data = lex, 
-              surv.method = "lifetable", surv.type = "surv.obs", 
-              conf.type = "log", breaks = list(FUT = seq(0, 25, 1)))
-```
-
-Compare Kaplan-Meier and lifetable estimates
-
-```{r p7_612, eval=TRUE,echo=TRUE,warnings=FALSE}
-plot(s.all)
-lines(st, col="red")
-```
-
-Lifetable for the first 5 annual intervals:
-
-```{r p7_62, eval=TRUE,echo=TRUE,warnings=FALSE}
-summary(st, t=1:5)
-```
-
-
-## Total mortality by stage
-
-Tumour stage is an important prognostic factor in cancer survival studies.
-
-Plot separate cumulative mortality curves for the different stage groups
-marking them with different colours, the order which you may define yourself.
-Also find the median survival time for each stage.
-
-```{r p7_7, eval=TRUE,echo=TRUE,warnings=FALSE}
-s.stg  <- survfit(suob ~ stage, data= orca)
-col5 <- c("green", "blue", "black", "red", "gray")
-plot(s.stg, col= col5, fun="event", mark.time=F )
-s.stg
+#mortality rates of the population of Finland (included in popEpi package)
+pm <- popEpi::popmort
 ```
 
 
 
-Create now two parallel plots of which the first one describes the cumulative hazards and the second one graphs the log-cumulative hazards against log-time
-for the different stages. Compare the two presentations
-with each other and with the one in the previous item.
 
-```{r p7_8, eval=TRUE,echo=TRUE,warnings=FALSE,fig.width=7,fig.height=5,dev.args=list(pointsize=15)}
-par(mfrow=c(1,2),mar=c(3,3,2,1))
-plot(s.stg, col= col5, fun="cumhaz", main="cum. hazards" )
-plot(s.stg, col= col5, fun="cloglog", main = "cloglog: log cum.haz"  )
-#a straight line with a slope of 1
-lines(exp(seq(-4,1,0.1)+3),seq(-4,1,0.1),lty=2)
+First, let's estimate the different measures of survival by using ``survtab`` function in ``popEpi`` package.
+
+## Lexis object with multi-state set-up
+
+
+```{r p9_2, eval=TRUE,echo=TRUE,warnings=FALSE}
+sire$agegr <- cut(sire$dg_age,c(0,45,55,65,75,Inf),right=F)
+
+Lex <- Lexis(entry = list(FUT = 0, AGE = dg_age, 
+                          CAL = cal.yr(dg_date)),
+             exit = list(CAL = cal.yr(ex_date)),
+             data = sire,
+             exit.status = factor(status, levels = 0:2,
+                                  labels = c("alive", "canD", "othD")),
+             merge = TRUE)
 ```
 
 
-If the survival times follow the exponential distribution
-in a given (sub)population,
-the corresponding cloglog-curve (plotted against time on the logarithmic scale) should be approximately a straight line with a slope of 1 (a straight line with any slope, if survival times follow the Weibull distribution).
-Could this be the case here in the different stages?
+## Overall survival
 
-Also, if the survival distributions of the different subpopulations would
-obey the *proportional hazards* model, the vertical distance between the
-cloglog-curves should be approximately constant over the time axis.
-Do these curves indicate serious deviation from the proportional hazards assumption?
+In overall survival, outcome event is death from any cause.
 
-## Does survival differ between males and females?
-
-```{r p7_101, eval=TRUE,echo=TRUE,warnings=FALSE}
-coxph(Surv(lex.dur, lex.Xst) ~ sex, data=lex)
-```
-
-No clear effect in survival between males and females was observed based on this simple analysis. 
-
-Next, we shall examine the confounding by age.
-First categorize the continuous age variable
-into, say, three categories by function ``cut()``
-using suitable breakpoints, like 55 and 75 years, and
-cross-tabulate sex and age group:
-
-```{r p7_9, eval=TRUE,echo=TRUE,warnings=FALSE}
-orca$agegr <- cut(orca$age, br=c(0,55,75,95), right=F)
-stat.table( list( sex, agegr), list( count(), percent(agegr) ),margins=T, data = orca )
-```
-
-Male patients are clearly younger than females in these data.
-
-There is evidence on the effect of sex after adjusting for age at diagnosis.
-
-```{r p7_102, eval=TRUE,echo=TRUE,warnings=FALSE}
-lex$agegr <- cut(lex$age, br=c(0,55,75,95), right=F)
-m.adj <- coxph(Surv(lex.dur, lex.Xst) ~ sex+agegr, data=lex)
-m.adj
-```
-
-Is proportionality of hazards a reasonable assumption?
-
-```{r p7_103, eval=TRUE,echo=TRUE,warnings=FALSE}
-cox.zph(m.adj)
+```{r p9_3, echo=TRUE, message=F}
+#piecewise constant hazard using monthly intervals
+BL <- list(FUT=seq(0, 15, by = 1/12))
+#overall survival
+st.obs <- survtab(
+  Surv(time=FUT, event=lex.Xst%in%c("canD", "othD")) ~ 1, 
+  data = Lex,surv.type = "surv.obs",breaks = BL)
+#summary(st.obs,t=c(1,5,10,15))
 ```
 
 
-Now, plot Kaplan--Meier curves jointly classified by sex and age.
 
-```{r p7_10, eval=TRUE,echo=TRUE,warnings=FALSE}
-s.agrx <- survfit(suob ~ agegr + sex, data=orca)
-par(mfrow=c(1,1))
-plot(s.agrx, fun="event", mark.time=F, xlim = c(0,15),
-          col=rep(c("red", "blue"),3), lty=c(2,2, 1,1, 5,5))
-```
 
-In each ageband the mortality curve for males is on a higher level than that for females.
 
-Now, estimate the age-standardised survival using the distribution of age at diagnosis as the standard:
+## 1 - Cumulative incidence of rectal cancer death
 
-```{r p7_104, eval=TRUE,echo=TRUE,warnings=FALSE}
-lex <- Lexis(exit = list(FUT = time),
-             exit.status = (event>0)*1,
-             data = orca[,-6], merge= T)
-w <- table(orca$agegr)
+One minus cumulative incidence = Proportion of patients who avoid death from rectal cancer in the presence of other causes of death. Rectal cancer death is avoided if a patient died from other causes than cancer.
 
-st <- survtab(Surv(time = FUT, event = lex.Xst) ~ sex + adjust(agegr), 
-              data = lex, weights = c(w), 
-              surv.method = "lifetable", surv.type = "surv.obs", 
-              conf.type = "log", breaks = list(FUT = seq(0, 15, 1/12)))
-
-st.non.stand <- survtab(Surv(time = FUT, event = lex.Xst) ~ sex, 
-              data = lex, 
-              surv.method = "lifetable", surv.type = "surv.obs", 
-              conf.type = "log", breaks = list(FUT = seq(0, 15, 1/12)))
-
-plot(st, col=c("blue","red"),conf.int = F)
-lines(st.non.stand, col=c("blue","red"),lty=2,conf.int=F)
-legend("topright",c("Men, age-standardised","Women, age-standardised",
-                    "Men, non-standardised","Women, non-standardised"),
-       col=rep(c("blue","red"),2),lty=c(1,1,2,2))
+```{r p9_4, echo=TRUE, message=F}
+st.cif <- survtab(Surv(time = FUT, event = lex.Xst) ~ 1, 
+                  data = Lex, 
+                  surv.type = "cif.obs",breaks = BL)
+#summary(st.cif,t=c(1,5,10,15))
 ```
 
 
-Use piecewise constant hazards model instead of Cox model. Split the follow-up time into annual intervals from 0 to 5 years, and thereafter, into 5-year intervals.
 
-Could hazard be a constant from 0 to 15 years (exponentially distributed survival times)?
 
-```{r p7_105, eval=TRUE,echo=TRUE,warnings=FALSE}
-lexF <- splitLexis(lex, c(seq(0, 5, 1),seq(10, 15, 5)), time.scale = "FUT")
-#exclude follow-up>15 years
-lexF <- subset(lexF, FUT<15)
-lexF$FUT <- cut(lexF$FUT, c(seq(0, 5, 1),seq(10, 15, 5)),right=F)
 
-# piecewise constant hazards
-m.pc <- glm(lex.Xst ~ FUT + sex + agegr, offset = log(lex.dur),
-              data = lexF, family = "poisson")
+## Relative survival
 
-# constant hazard model
-m.c <- glm(lex.Xst ~ sex + agegr, offset = log(lex.dur),
-              data = lexF, family = "poisson")
+Relative survival gives an estimate of net survival = the proportion of patients alive in the absence of other causes of death than cancer
 
-anova(m.c,m.pc,test="LRT")
+```{r p9_5, echo=TRUE, message=F}
+names(pm) <- c("sex","CAL","AGE","haz")
+w <- table(Lex$agegr)
+w <- list(agegr = as.numeric(w))
+st.rel <- survtab(
+  Surv(time = FUT, event = lex.Xst%in%c("canD", "othD")) 
+    ~ adjust(agegr), data = Lex, pophaz = pm,
+    surv.type = "surv.rel",breaks = BL, weights=w)
+#summary(st.rel,t=c(1,5,10,15))
 ```
 
-Can we assume proportional hazards between age groups, i.e. no interaction between follow-up time and age at entry?
-
-```{r p7_106, eval=TRUE,echo=TRUE,warnings=FALSE}
-# main effects only
-m.pc.age <- glm(lex.Xst ~ FUT + sex + agegr, offset = log(lex.dur),
-              data = lexF, family = "poisson")
-
-#interaction included
-m.pc.age.fu <- glm(lex.Xst ~ FUT + sex + agegr + FUT:agegr, offset = log(lex.dur),
-              data = lexF, family = "poisson")
-
-anova(m.pc.age,m.pc.age.fu,test="LRT")
-```
-
-The effect of sex adjusted for age based on the piecewise constant hazards model
+By default, ``survtab`` function uses the Ederer II estimator for relative survival.
 
 
-```{r p7_107, eval=TRUE,echo=TRUE,warnings=FALSE}
-summary(m.pc.age)
+## Cause-specific survival (event = death from rectal cancer)
+
+In cause-specific survival (normal Kaplan-Meier), outcome event is death from rectal cancer. It gives an estimate of net survival = the proportion of patients alive in the absence of other causes of death than cancer
+
+```{r p9_6, echo=TRUE, message=F}
+st.cause<- survtab(
+  Surv(time = FUT, event = lex.Xst) ~ adjust(agegr), 
+  data = Lex, pophaz = pm,
+  surv.type = "surv.cause",breaks = BL, weights=w)
+#summary(st.cause,t=c(1,5,10,15))
 ```
 
 
+```{r p9_7, echo=T, message=FALSE, results='hide',fig.width=8,fig.height=8}
+plot(st.obs,conf.int=F,ylim=c(0,1),ylab="")
+lines(st.cif$Tstop,1-st.cif$CIF_canD,col="magenta")
+lines(st.rel,y="r.e2.as",conf.int=F,col="dodgerblue")
+lines(st.cause,y="surv.obs.canD.as",conf.int=F,col="green")
+legend("bottomleft",c("Overall survival",
+                      "Proportion of patients who avoid rectal cancer death",
+                      "Relative survival (proportion who avoid rectal cancer death\n in the absence of other causes of death)",
+                      "Cause-specific survival (proportion who avoid rectal cancer death\n in the absence of other causes of death)"),
+       col=c("black","magenta","blue","green"),lty=1)
+```
+
+Compare the estimates and their interpretation.
+Remember that the probability interpretation of relative survival and cause-specific survival relies on the assumption that competing risks are independent, and you never know whether it is true or not. 
+
+Relative and cause-specific survival are, however, useful summary measures of excess mortality and cause-specific mortality, respectively, when the aim is to compare cancer survival between calendar periods (or e.g. countries) between which mortality due to other causes of death may also differ. 
+
+
+# Age-standardised relative survival
+
+Has rectal cancer survival in improved from 1993-2002 to 2003-2012. Estimate the age-standardised relative survival using ICSS weights and the Pohar Perme estimator.  
+
+```{r p9_8, echo=TRUE, message=F}
+Lex$period <- cut( cal.yr(Lex$dg_date), c(1993,2003,2013), right=F,dig.lab = 4)
+ICSS1 <- aggregate(ICSS1~cut(ICSS$age, 
+                   c(0,45,55,65,75,Inf), right = FALSE), 
+                   data = ICSS, FUN = sum)
+w <- list(agegr = ICSS1$ICSS1)
+st.rel <- survtab(
+  Surv(time = FUT, event = lex.Xst%in%c("canD", "othD")) 
+  ~ sex + period + adjust(agegr), 
+  data = Lex,pophaz = pm,surv.type = "surv.rel",
+  relsurv.method = "pp",breaks = BL, weights=w)
+summary(st.rel,t=c(1,5,10,15))
+```
+
+``summary`` prints estimates at given time points: at 1, 5, 10 and 15 years after diagnosis (column ``Tstop``). Column ``surv.int`` shows the follow-up time interval (monthly intervals were defined in ``breaks``):
+at the end of 12th follow-up time interval ``Tstop=1`` (1-year survival). The length of the intervals is ``delta`` in years. Notice that ``d``, ``pyrs`` and ``d.exp`` are the number of deaths, person-years and the expected number of deaths within a monthly interval only, e.g. from 11 to <12 months (``surv.int=12``). The Pohar Perme estimator is based on the weighted observations ``d.pp``, ``pyrs.pp`` and ``d.exp.pp``.
+
+The age-standardised survival estimates (both overall survival ``surv.obs.as`` and relative survival ``r.pp.as`` (based on the Pohar Perme estimator) with 95% confidence intervals and standard errors were calculated for the two periods.
+
+Plot the age-standardised relative survival curves in patients diagnosed in 1993-2002 and in 2003-2012:
+
+```{r p9_9, echo=T, message=FALSE, results='hide'}
+plot(st.rel[st.rel$period=="[1993,2003)",])
+lines(st.rel[st.rel$period=="[2003,2013)",],col="red")
+legend("topright",c("1993-2002","2003-2012"),col=c("black","red"),lty=1)
+```
+
+
+# Regression model for relative survival
+
+Estimate the relative excess risk (ratio of excess hazards) for the difference in rectal cancer survival between 1993-2002 and 2003-2012. First, tabulate the observations by follow-up time interval, age group, sex and period.
+
+```{r p9_10, echo=TRUE, message=F}
+BL <- list(fot=c(0,3/12,1:5))
+names(pm) <- c("sex","year","agegroup","haz")
+sire$period <- cut( cal.yr(sire$dg_date), c(1993,2003,2013), right=F,dig.lab = 4)
+Lex_aggre <- lexpand(sire, birth = bi_date,
+               entry = dg_date, exit = ex_date,
+               status = status%in%1:2,
+               breaks = BL, pophaz = pm,pp=F,
+               aggre = list(fot,agegr,sex,period)
+)
+
+```
+
+The piecewise constant excess hazard model can be fitted using ``relpois_ag`` function in ``popEpi`` package:
+
+```{r p9_11, echo=TRUE, message=F}
+m1 <- relpois_ag(formula = from0to1 ~ period+fot*agegr, 
+                 data = Lex_aggre, d.exp = d.exp, offset = log(pyrs))
+ci.exp(m1)
+```
+
+Age-adjusted excess mortality among patients diagnosed in 2003-2012 is 0.78-fold compared to patients diagnosed in 1993-2002. 
+
+In cancer survival, it is almost always necessary to include interactions between follow-up time and age into the model (i.e. excess hazards are not proportional between age groups):
+
+```{r p9_12, echo=TRUE, message=F}
+m0 <- relpois_ag(formula = from0to1 ~ period+fot + agegr, 
+                 data = Lex_aggre, d.exp = d.exp, offset = log(pyrs))
+anova(m0,m1,test="LRT")
+```
+
+EXTRA: The same model can be fitted using ``glm`` function. The link function of relative survival Poisson regression can be specified as follows:
+
+```{r p9_13, echo=TRUE, message=F}
+Lex_aggre$FUT <- cut( Lex_aggre$fot, c(0,3/12,1:5), right=F)
+d_star <- Lex_aggre$d.exp
+
+#define link function for relative survival regression
+rspois <- poisson()
+rspois$link <- "glm relative survival model with Poisson error"
+rspois$linkfun <- function(mu) log(mu - d_star)
+rspois$linkinv <- function(eta) d_star + exp(eta)
+assign(".d_star", Lex_aggre$d.exp, env = .GlobalEnv)
+rspois$initialize <- expression({
+  if (any(y < 0)) stop(paste("Negative values not allowed for", 
+                             "the Poisson family"))
+  n <- rep.int(1, nobs)
+  mustart <- pmax(y, .d_star) + 0.1
+})
+
+#glm model
+m2 <- glm(formula = from0to1 ~ period+FUT*agegr, 
+          data = Lex_aggre, family=rspois, offset = log(pyrs))
+ci.exp(m2)
+```
+
+
+# Optional: pre-weighting approach for age standardisation of relative survival
+
+In sparse data (in this example: a small subset of patients diagnosed in 2003-2012), pre-weighting approach allows estimation of longer term net survival. The weights are defined as follows:  
+
+```{r opt1, echo=TRUE, message=F}
+#The weights for individual observations
+sire2003 <- sire[period=="[2003,2013)" & dg_date<ex_date][seq(1,2000,20),]
+weights <- table(sire2003$agegr[sire2003$period=="[2003,2013)"])
+weights <- data.frame(weights,w)
+colnames(weights) <- c("agegr","N","ICSS1")
+weights$w_pat <- weights$N/sum(weights$N)
+weights$w_ICSS1 <- weights$ICSS1/100000
+weights$individual_weights <- weights$w_ICSS1/weights$w_pat
+weights
+```
+
+Merge patient data with individual weights and split follow-up time into monthly intervals:
+
+```{r opt2, echo=TRUE, message=F}
+sire2003 <- merge(sire2003,weights[,c("agegr","individual_weights")],by="agegr")
+
+BL <- list(fot=seq(0, 25, by = 1/12))
+Lex_aggre_ind_w <- lexpand(sire2003, birth = bi_date,
+               entry = dg_date, exit = ex_date,
+               status = status%in%1:2,
+               breaks = BL, pophaz = pm,pp=T,
+               aggre = list(fot,agegr,individual_weights)
+)
+```
+
+Estimate age-standardised net survival using a) traditional weighting (i.e. weighted average of age-specific estimates) and b) pre-weighting approach
+
+```{r opt3, echo=TRUE, message=F}
+#Traditional age-standardisation (stratification)
+st.pp.as <- survtab_ag(fot ~ adjust(agegr), data = Lex_aggre_ind_w,     
+         weights = weights$w_ICSS1,
+         surv.type = "surv.rel", relsurv.method = "pp",
+         d.pp = "from0to1.pp", d.pp.2 = "from0to1.pp.2", 
+         pyrs.pp = "ptime.pp", d.exp.pp = "d.exp.pp")
+
+#Pre-weighting of observations
+Lex_aggre_ind_w[,from0to1.pp.prew:=from0to1.pp*individual_weights]
+Lex_aggre_ind_w[,from0to1.pp.prew.2:=from0to1.pp.2*(individual_weights^2)]
+Lex_aggre_ind_w[,ptime.pp.prew:=ptime.pp*individual_weights]
+Lex_aggre_ind_w[,d.exp.pp.prew:=d.exp.pp*individual_weights]
+st.pp.prew <- survtab_ag(fot ~ 1, data = Lex_aggre_ind_w, 
+         surv.type = "surv.rel", relsurv.method = "pp",
+         d.pp = "from0to1.pp.prew", d.pp.2 = "from0to1.pp.prew.2", 
+         pyrs.pp = "ptime.pp.prew", d.exp.pp = "d.exp.pp.prew")
+
+plot(st.pp.prew)
+lines(st.pp.as,col="red")
+```
+
+Note: The pre-weighting approach allows estimation of net survival for a longer period of follow-up than the traditional age standardisation.

@@ -12,9 +12,9 @@ subtitle: Practicals 8
 ---
 
 
-```{r p7_0, include=FALSE}
+
+```{r p6_0, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, comment = NA)
-options(warn=-1)
 #setwd("C:/Users/karri.seppa/Documents/TRE")
 ```
 
@@ -22,242 +22,362 @@ options(warn=-1)
 # Topics of practical 8
 
 
-
 Learning objectives of this practical
 
-*   Compare estimates and interpretations of different survival measures (overall, cause-specific and relative survival, and 1-cumulative incidence)
-*   Age standardisation of relative survival
-*   Piecewise constant excess hazard model for relative survival
+*   reading ascii data files using R-studio
+*   analysis of case-control data
 
 
-# Survival analysis: Rectal cancer patients
+Data description
+
+In the mid-80s a case-control study on risk factors for malignant melanoma was conducted in
+Denmark (Asterlind et al. The Danish case-control study of cutaneous malignant melanoma I:
+Importance of host factors. Int J Cancer 1988; 42: 200-206). The cases were patients with skin melanoma (excluding lentigo melanoma), newly diagnosed from 1 Oct, 1982 to 31 March, 1985, aged 20-79, from East Denmark, and they were identified from the Danish Cancer Registry. The controls (twice as many as cases) were drawn from the residents of East Denmark in April, 1984, as a random sample stratified by sex and age (within the same 5 year age group) to reflect the sex and age distribution of the cases. This is called group matching, and in such a study, it is necessary to control for age and sex in the statistical analysis. (Yes indeed: In spite of the fact that stratified sampling by sex and age removed the statistical association of these variables with melanoma from the final case-control data set, the analysis must control for variables which determine the probability of selecting subjects from the base population to the study sample.)
+
+The population of East Denmark is a dynamic one. Sampling the controls only at one time
+point is a rough approximation of incidence density sampling, which ideally would spread out
+over the whole study period. Hence the exposure odds ratios calculable from the data are
+estimates of the corresponding hazard rate ratios between the exposure groups.
+After exclusions, refusals etc., 474 cases (92% of eligible cases) and 926 controls (82%) were interviewed. This was done face-to-face with a structured questionnaire by trained interviewers, who were not informed about the subjects case-control status.
+For this exercise we have selected a few host variables from the study in an ascii-file, melanoma.dat.
 
 
-## Description of the data
+The variables are listed in the following table.
+
+Table 1: Variables in the melanoma dataset.
+
+```{r p6_1, eval=T,echo=FALSE,warning=FALSE}
+library(data.table)
+desc<-data.table(read.table(text="
+Variable;  Units or Coding; Type; Name
+Case-control status; 1=case, 0=control; numeric; cc
+Sex; 1=male, 2=female; numeric; sex 
+Age at interview; age in years; numeric; age
+Skin complexion; 0=dark, 1=medium, 2=light; numeric; skin
+Hair colour; 0=dark brown/black, ;numeric ; hair
+ ; 1=light brown,2=blonde, 3=red;  ;  
+eye colour; 0=brown, 1=grey, green, 2=blue; numeric; eyes
+Freckles; 1=many, 2=some, 3=none; numeric; freckles
+Naevi; small no. naevi < 5mm; numeric; nvsmall
+Naevi; largs no. naevi >= 5mm; numeric; nvlarge"
+, sep=";",header = T))
+```
+
+```{r p6_2, eval=TRUE,echo=FALSE,warning=FALSE}
+print(desc, row.names=FALSE)
+```
+
+## 1. Reading the data
+
+Use R-studio import data to read in ascii(text) format data.
+
+**Note - missing value is defined by . (period)**.
+
+```{r p6_3,echo=TRUE,warning=FALSE}
+mm <- read.table("melanoma.dat", header=T, na.strings=".")
+str(mm)
+head(mm, n=20)
+```
 
 
-Data frame ``sire`` includes observations of a simulated cohort of 8243 female Finnish rectal cancer patients diagnosed between 1993-2012.
-The dataset contains the following variables:
+## 2. House keeping
 
-variable    | description
------------ | --------------------
-sex         | 0 = Male, 1 = Female   
-bi_date     |date of birth  
-dg_date     |date of cancer diagnosis 
-ex_date     |date of exit from follow-up (death or censoring)
-status      |status at the end of follow-up (numeric): \newline 0 = alive, 1 = death from rectal cancer, 2 = death from other causes. 
-dg_age      | age at diagnosis (in fractional years)
+The structure of the data frame mm tells us that all the variables are numeric (integer), so first you need to do a bit of house keeping. For example the variables sex, skin, hair, eye need to be converted to factors, with labels, and freckles which is coded 4 for none down to 1 for many (not very intuitive) needs to be recoded, and relabelled.
 
-            
-
-## Loading the packages and the data
+To avoid too much typing and to leave more time to think about the analysis, just copy paste the following lines to your R-script 
 
 
-Load the R packages ``Epi`` and ``popEpi`` needed in this exercise.
-```{r p9_1, eval=TRUE,echo=TRUE,warnings=FALSE, message=FALSE, results='hide'}
+
+```{r p6_4, eval=TRUE,echo=TRUE,warning=FALSE}
+mm$sex <- factor(mm$sex,labels=c("M","F"))
+mm$skin <- factor(mm$skin,labels=c("dark","medium","light"))
+mm$hair <- factor(mm$hair,labels=c("dark","light_brown","blonde","red"))
+mm$eyes <- factor(mm$eyes,labels=c("brown","grey-green","blue"))
+mm$freckles <- 4 - mm$freckles
+mm$age.cat <- cut(mm$age,breaks=c(20,30,40,50,60,70,85),right=F)
+mm$freckles <- factor(mm$freckles,labels=c("none","some","many"))
+
 library(Epi)
-library(popEpi)
-#mortality rates of the population of Finland (included in popEpi package)
-pm <- popEpi::popmort
+mm$hair2 <- Relevel(mm$hair,list("dark"=1,"other"=c(2,3,4)))
+mm$nvsma4 <- cut(mm$nvsmall,breaks=c(0,1,2,5,50),right=F)
+mm$nvlar3 <- cut(mm$nvlarge,breaks=c(0,1,2,15),right=F)
+```
+
+or alternatively you can use the ready made file melanoma-house.r by adding the following line to your r script source("melanoma-house.r")
+
+Look again at the structure of the data frame mm and note the changes. Use the command
+summary(mm) to look at the univariate distributions.
+
+
+```{r p6_5, eval=TRUE,echo=TRUE,warning=FALSE}
+str(mm) ; summary(mm)
+```
+
+Now let's turn to something a bit more interesting.
+
+## 3. Association of melanoma with one variable at a time
+
+As a first step it is a good idea to start by looking at the effect of each of the variables, controlled for age and sex. To examine the effect of hair colour, start from simple cross-tabulation:
+
+```{r p6_6, eval=TRUE,echo=TRUE,warning=FALSE}
+stat.table( list( cc, hair), list(count(), percent(hair) ), mm, T)
+```
+
+Now estimate the effect of hair by fitting the corresponding binomial regression model with
+logit link:
+
+```{r p6_7, eval=TRUE,echo=TRUE,warning=FALSE}
+m.hair <- glm(cc ~ sex + age.cat + hair, family="binomial", data=mm)
+round(ci.lin(m.hair, Exp=T)[ , 5:7], 2)
+```
+
+Look at the effects of eyes and freckles in the same way.
+
+## 4. Hair colour as a binary or dichotomous factor
+
+From the above you can see that subjects at each of the 3 levels light-brown, blonde, and red, are at greater risk than subjects with dark hair, with similar odds ratios. This suggests creating a new variable hair2 which has just two levels, dark and the other three. The Relevel() function has been used for this in the house keeping script.
+
+Use glm() to compute the odds-ratio of melanoma between persons with red, blonde or light
+brown hair versus those with dark hair.
+
+
+## 5. The effect of freckles stratified by and adjusted for hair2
+
+When you control the effect of an exposure for some variable you are asking a question about
+what would the effect be if the variable is kept constant. For example, consider the effect of freckles adjusted for hair2 in addition to age.cat and sex.
+We first estimate the effect of freckles separately in the two categories of hair2. This can be done by fitting a generalized model, in which the effect of freckles is stratified by hair2 (or nested in) as follows:
+
+```{r p6_8, eval=TRUE,echo=TRUE,warning=FALSE}
+m.f_h2 <- glm( cc ~ sex + age.cat + hair2/freckles,
+family = "binomial", data = mm)
+round( ci.lin( m.f_h2, Exp=T)[ , 5:7], 2)
+
+#compare with different parametrization
+m.f_h2b <- glm( cc ~ sex + age.cat + hair2*freckles,
+family = "binomial", data = mm)
+round( ci.lin( m.f_h2b, Exp=T)[ , 5:7], 2)
+```
+
+Based on eyeballing the hair-colour-specific effect estimates for the two categories of freckles, and their wide and substantially overlapping confidence intervals, there seems to be not much evidence against the simplifying assumption that the rate ratios associated with freckles would be homogenous in the two levels of hair colour. Thus, we will next fit a model in which the effect of freckles is adjusted for hair2 in the usual way. It is also possible to perform a deviance test for the possible modification using anova().
+
+```{r p6_9, eval=TRUE,echo=TRUE,warning=FALSE}
+m.fh2 <- glm( cc ~ sex + age.cat + hair2 + freckles,
+family = "binomial", data = mm)
+round( ci.lin( m.fh2, Exp=T)[ , 5:7], 2)
+anova( m.fh2, m.f_h2, test="LRT")
+```
+
+## 6. Naevi small and large
+
+The distributions of nvsmall and nvlarge are very skew to the right. You can see this from
+the stem&leaf diagrams
+
+```{r p6_10, eval=TRUE,echo=TRUE,warning=FALSE}
+with(mm, stem(nvsmall)) ; with(mm, stem(nvlarge))
+```
+
+Because of this it is wise to categorize them into a few classes
+* small naevi into four: 0, 1, 2-4, and 5+;
+* large naevi into three: 0, 1, and 2+.
+This has already been done in the housekeeping script. Look at the joint frequency distribution of these new variables using stat.table(). Are they strongly associated?
+
+```{r p6_11, eval=TRUE,echo=TRUE,warning=FALSE}
+stat.table(index = list(nvsma4,nvlar3),
+contents = list(count(), percent(nvlar3)),
+margins = T, data=mm)
+```
+
+Compute the sex- and age-adjusted OR estimates associated with the number of small naevi
+by fitting separate logistic regression models including sex, age.cat and nvsma4 in the model formula.
+
+```{r p6_12, eval=TRUE,echo=TRUE,warning=FALSE}
+m.nvs <- glm(cc ~ sex + age.cat + nvsma4, family="binomial", data=mm)
+round(ci.lin(m.nvs, Exp=T)[, 5:7], 3)
 ```
 
 
+Do the same with nvlar3.
+```{r p6_13, eval=TRUE,echo=TRUE,warning=FALSE}
+m.nvl <- glm(cc ~ sex + age.cat + nvlar3, family="binomial", data=mm)
+round(ci.lin(m.nvl, Exp=T)[ , 5:7], 3)
+```
 
+Now fit a glm containing age.cat, sex, nvsma4 and nvlar3 and assign the result in model
+object nvboth. What is the interpretation of the last two coefficients?
 
-First, let's estimate the different measures of survival by using ``survtab`` function in ``popEpi`` package.
+```{r p6_14, eval=TRUE,echo=TRUE,warning=FALSE}
+nvboth <- glm(cc ~ sex + age.cat + nvlar3 + nvsma4,
+family="binomial", data=mm)
+round( ci.lin(nvboth, Exp=T)[ -(1:7), 5:7], 2)
+```
 
-## Lexis object with multi-state set-up
+The odds ratios (with CIs) can be graphically displayed using function plotEst() in Epi. Its
+uses the value of ci.lin() evaluated on the fitted model object. As the intercept and the
+effects of age and sex are of no interest, we shall drop the corresponding rows (the 7 first ones) from the matrix produced by ci.lin(), and the plot is based just on the 1st, 5th and the 6th column of this matrix:
 
+```{r p6_15, eval=TRUE,echo=TRUE,warning=FALSE}
+plotEst( exp( ci.lin( nvboth )[-(1:7), -(2:4)] ), xlog=T,vref=1 )
+```
 
-```{r p9_2, eval=TRUE,echo=TRUE,warnings=FALSE}
-sire$agegr <- cut(sire$dg_age,c(0,45,55,65,75,Inf),right=F)
+The xlog argument makes the OR axis logarithmic.
 
-Lex <- Lexis(entry = list(FUT = 0, AGE = dg_age, 
-                          CAL = cal.yr(dg_date)),
-             exit = list(CAL = cal.yr(ex_date)),
-             data = sire,
-             exit.status = factor(status, levels = 0:2,
-                                  labels = c("alive", "canD", "othD")),
-             merge = TRUE)
+## 7. Nested case-control example
+
+Recall the diet data
+
+```{r p6_16, eval=TRUE,echo=TRUE,warning=FALSE}
+library(Epi)
+library(survival)
+data(diet)
+head(diet)
+```
+Recall   The 'diet' data frame has 337 rows and 14 columns. The data concern a subsample of subjects drawn from larger cohort studies of the incidence of coronary heart disease (CHD). These subjects had all completed a 7-day weighed dietary survey while taking part in validation studies of dietary questionnaire methods. Upon the closure of the MRC Social Medicine Unit, from where these studies were directed, it was found that 46 CHD events had occurred in this group, thus allowing a serendipitous study of the relationship between diet and the incidence of CHD.
+     
+We are interested in association between energy intake and CHD risk. For that we create a nested case-control study:
+  Given the basic outcome variables for a cohort study: the time of entry to the cohort, the time of exit and the reason for exit ("failure" or "censoring"), this function computes risk sets and generates a matched case-control study in which each case is compared with a set of controls randomly sampled from the appropriate risk set. Other variables may be matched when selecting controls.
+
+```{r p6_16b, eval=TRUE,echo=TRUE,warning=FALSE}
+## Set seed for the random number generator
+set.seed(20200309)
+diet$age_at_entry <- cal.yr(diet$doe)-cal.yr(diet$dob)
+diet$age_at_exit <- cal.yr(diet$dox)-cal.yr(diet$dob)
+## Generate a nested case-control study
+dietcc <- ccwc(
+  entry    = doe,    # Time of entry to follow-up
+  exit     = dox,    # Time of exit from follow-up
+  fail     = chd,    # Status on exit (1 = Fail,0 =Censored)
+  origin   = dob,    # Origin of analysis time scale
+  controls = 2,      # The number of controls to be selected for each case
+  data     = diet,   # data frame
+  include  = list(energy,age_at_entry,age_at_exit,chd), 
+                     # List of other variables to be carried across into 
+                     # the case-control study
+  match    = job,    # List of categorical variables on which to match 
+                     # cases and controls
+  silent   = T
+               )
+
+#two cases occur at the same age in Set 40
+with( dietcc, tapply(Fail,Set,sum) )
+dietcc[dietcc$Set==40,]
+
+## Show first 10 observations
+head(dietcc, 10)
+
+#controls who will become cases later (at an older age)
+dietcc[dietcc$Fail==0 & dietcc$Map %in% dietcc$Map[dietcc$Fail==1],]
+dietcc[dietcc$Set==3,]
+diet[51,]
 ```
 
 
-## Overall survival
+The 1:2 risk set-matched dataset contains the following variables.
 
-In overall survival, outcome event is death from any cause.
+Set: case-control set number
+Map: row number of record in input dataframe
+Time: failure time of the case in this set
+Fail: failure status (1=case, 0=control)
+These are followed by the matching variables,
+and finally by thevariables in the 'include' list
 
-```{r p9_3, echo=TRUE, message=F}
-#piecewise constant hazard using monthly intervals
-BL <- list(FUT=seq(0, 15, by = 1/12))
-#overall survival
-st.obs <- survtab(
-  Surv(time=FUT, event=lex.Xst%in%c("canD", "othD")) ~ 1, 
-  data = Lex,surv.type = "surv.obs",breaks = BL)
-#summary(st.obs,t=c(1,5,10,15))
+The analysis requires conditional logistic regression. By stratifying on the matched sets, the matching factors, i.e., risk set and the job type here, are conditioned on. Conditioning on the matching factors is necessary in matched case control studies. Otherwise, selection bias will arise.
+
+```{r p6_17, eval=TRUE,echo=TRUE,warning=FALSE}
+resClogit <- clogit(formula = Fail ~ scale(energy) + strata(Set), data = dietcc)
+summary(resClogit)
+```
+
+What is the estimate of RR and is it significant?
+
+```{r p6_18, eval=TRUE,echo=TRUE,warning=FALSE}
+#by Cox model (no need to model baseline hazard of age)
+summary(coxph(
+  Surv(time=age_at_entry,time2=age_at_exit,chd)~scale(energy)+job,
+  data=diet))
+
+#alternatively by assuming piecewise constant 
+#hazards model for the baseline hazard (was done in practical 4):
+diet <- transform(diet, doeY = cal.yr(doe),
+              doxY = cal.yr(dox), dobY = cal.yr(dob) )
+dietL <- Lexis( entry = list(age = doeY-dobY),
+              exit = list(age = doxY-dobY),
+              exit.status = chd, data = diet)
+dietA <- splitLexis(dietL, br = seq(30,70,5),
+              time.scale = "age")
+dietA$ageband <- cut(dietA$age, seq(30,70,5))
+dietA$ageband <- relevel(dietA$ageband, ref = "(60,65]")
+#dietA$ageband <- Relevel(dietA$ageband, list(1:2, 3, 4:5))
+#levels(dietA$ageband) <- c("30-<50", "50-<60", "60-<70")
+dietA$y_ik <- dietA$lex.dur
+dietA$d_ik <- dietA$lex.Xst
+
+me1 <- glm( d_ik ~ ageband + scale(energy), fam = poisson, offset=log(y_ik), 
+            data = dietA )
+round(ci.lin(me1, Exp=T)[ , -(3:4)],4)
+```
+
+What is the RR using the whole cohort ?
+
+## 8. Case-cohort analysis
+
+Study question: Is stage of the tumor associated with the risk of relapse in Wilm's tumor.
+
+Data from the National Wilm's Study.
+
+Missing data/masurement error example. Tumor histology predicts survival, but prediction is stronger with central lab histology than with the local institution determination.
+
+Format: A data frame with 4028 observations on the following 9 variables.
+
+     'seqno' id number
+     'instit' Histology from local institution
+     'histol' Histology from central lab
+     'stage' Disease stage
+     'study' study
+     'rel' indicator for relapse
+     'edrel' time to relapse
+     'age' age in months
+     'in.subcohort' Included in the subcohort for the example in the paper'
+
+The in.subcohort variable indicates if the subject has been chosen as a member of the subcohort at the beginning of the study. To simulate a case-cohort study, dataset is subset to those who relapsed (cases) and those who are in the subcohort (controls).
+
+```{r p6_19, eval=TRUE,echo=TRUE,warning=FALSE}
+## Load data
+data(nwtco)
+head(nwtco)
 ```
 
 
+```{r p6_20, eval=TRUE,echo=TRUE,warning=FALSE}
+## Indicator for those relapsed OR in the subcohort (data ascertained for cases and controls only)
+selccoh <- with(nwtco, rel == 1 | in.subcohort == TRUE)
 
+## Subset to these 1154 patients. (Case-cohort dataset)
+caseCohortData <- nwtco[selccoh,]
 
+## Create factors
+caseCohortData <- within(caseCohortData, {
 
-## 1 - Cumulative incidence of rectal cancer death
+    histol <- factor(histol, labels = c("FH","UH"))
+    stage  <- factor(stage,  labels = c("I","II","III","IV"))
+    age    <- age / 12 # Age in years
+ })
 
-One minus cumulative incidence = Proportion of patients who avoid death from rectal cancer in the presence of other causes of death. Rectal cancer death is avoided if a patient died from other causes than cancer.
-
-```{r p9_4, echo=TRUE, message=F}
-st.cif <- survtab(Surv(time = FUT, event = lex.Xst) ~ 1, 
-                  data = Lex, 
-                  surv.type = "cif.obs",breaks = BL)
-#summary(st.cif,t=c(1,5,10,15))
+## Check
+head(caseCohortData)
 ```
 
+Analysis with the cch() function. Cox regression is used to fit the model, thus the HR notation. The HR shown here is interpreted as the risk ratio. Fits proportional hazards regression model to case-cohort data. Returns estimates and standard errors from relative risk regression fit to data from case-cohort studies. A choice is available among the Prentice, Self-Prentice and Lin-Ying methods for unstratified data. For stratified data the choice is between Borgan I, a generalization of the Self-Prentice estimator fo unstratified case-cohort data, and Borgan II, a generalization of the Lin-Ying estimator.
+
+Standard case-cohort analysis: simple random subcohort
+Fits proportional hazards regression model to case-cohort data
 
 
-
-
-## Relative survival
-
-Relative survival gives an estimate of net survival = the proportion of patients alive in the absence of other causes of death than cancer
-
-```{r p9_5, echo=TRUE, message=F}
-names(pm) <- c("sex","CAL","AGE","haz")
-w <- table(Lex$agegr)
-w <- list(agegr = as.numeric(w))
-st.rel <- survtab(
-  Surv(time = FUT, event = lex.Xst%in%c("canD", "othD")) 
-    ~ adjust(agegr), data = Lex, pophaz = pm,
-    surv.type = "surv.rel",breaks = BL, weights=w)
-#summary(st.rel,t=c(1,5,10,15))
+```{r p6_21, eval=TRUE,echo=TRUE,warning=FALSE}
+fit.ccP <- cch(Surv(edrel, rel) ~ stage + histol + age,
+               data        = caseCohortData,
+               subcoh      = ~ in.subcohort, # Vector of indicatorsfor subjects sampled as part of the sub-cohort
+               id          = ~ seqno,     # Vector of unique identifiers
+               cohort.size = 4028)        # Vector with size of each stratum original cohort
+summary(fit.ccP)
 ```
-
-By default, ``survtab`` function uses the Ederer II estimator for relative survival.
-
-
-## Cause-specific survival (event = death from rectal cancer)
-
-In cause-specific survival (normal Kaplan-Meier), outcome event is death from rectal cancer. It gives an estimate of net survival = the proportion of patients alive in the absence of other causes of death than cancer
-
-```{r p9_6, echo=TRUE, message=F}
-st.cause<- survtab(
-  Surv(time = FUT, event = lex.Xst) ~ adjust(agegr), 
-  data = Lex, pophaz = pm,
-  surv.type = "surv.cause",breaks = BL, weights=w)
-#summary(st.cause,t=c(1,5,10,15))
-```
-
-
-```{r p9_7, echo=T, message=FALSE, results='hide',fig.width=8,fig.height=8}
-plot(st.obs,conf.int=F,ylim=c(0,1),ylab="")
-lines(st.cif$Tstop,1-st.cif$CIF_canD,col="magenta")
-lines(st.rel,y="r.e2.as",conf.int=F,col="dodgerblue")
-lines(st.cause,y="surv.obs.canD.as",conf.int=F,col="green")
-legend("bottomleft",c("Overall survival",
-                      "Proportion of patients who avoid rectal cancer death",
-                      "Relative survival (proportion who avoid rectal cancer death\n in the absence of other causes of death)",
-                      "Cause-specific survival (proportion who avoid rectal cancer death\n in the absence of other causes of death)"),
-       col=c("black","magenta","blue","green"),lty=1)
-```
-
-Compare the estimates and their interpretation.
-Remember that the probability interpretation of relative survival and cause-specific survival relies on the assumption that competing risks are independent, and you never know whether it is true or not. 
-
-Relative and cause-specific survival are, however, useful summary measures of excess mortality and cause-specific mortality, respectively, when the aim is to compare cancer survival between calendar periods (or e.g. countries) between which mortality due to other causes of death may also differ. 
-
-
-# Age-standardised relative survival
-
-Has rectal cancer survival in improved from 1993-2002 to 2003-2012. Estimate the age-standardised relative survival using ICSS weights and the Pohar Perme estimator.  
-
-```{r p9_8, echo=TRUE, message=F}
-Lex$period <- cut( cal.yr(Lex$dg_date), c(1993,2003,2013), right=F,dig.lab = 4)
-ICSS1 <- aggregate(ICSS1~cut(ICSS$age, 
-                   c(0,45,55,65,75,Inf), right = FALSE), 
-                   data = ICSS, FUN = sum)
-w <- list(agegr = ICSS1$ICSS1)
-st.rel <- survtab(
-  Surv(time = FUT, event = lex.Xst%in%c("canD", "othD")) 
-  ~ sex + period + adjust(agegr), 
-  data = Lex,pophaz = pm,surv.type = "surv.rel",
-  relsurv.method = "pp",breaks = BL, weights=w)
-summary(st.rel,t=c(1,5,10,15))
-```
-
-``summary`` prints estimates at given time points: at 1, 5, 10 and 15 years after diagnosis (column ``Tstop``). Column ``surv.int`` shows the follow-up time interval (monthly intervals were defined in ``breaks``):
-at the end of 12th follow-up time interval ``Tstop=1`` (1-year survival). The length of the intervals is ``delta`` in years. Notice that ``d``, ``pyrs`` and ``d.exp`` are the number of deaths, person-years and the expected number of deaths within a monthly interval only, e.g. from 11 to <12 months (``surv.int=12``). The Pohar Perme estimator is based on the weighted observations ``d.pp``, ``pyrs.pp`` and ``d.exp.pp``.
-
-The age-standardised survival estimates (both overall survival ``surv.obs.as`` and relative survival ``r.pp.as`` (based on the Pohar Perme estimator) with 95% confidence intervals and standard errors were calculated for the two periods.
-
-Plot the age-standardised relative survival curves in patients diagnosed in 1993-2002 and in 2003-2012:
-
-```{r p9_9, echo=T, message=FALSE, results='hide'}
-plot(st.rel[st.rel$period=="[1993,2003)",])
-lines(st.rel[st.rel$period=="[2003,2013)",],col="red")
-legend("topright",c("1993-2002","2003-2012"),col=c("black","red"),lty=1)
-```
-
-
-
-# Regression model for relative survival
-
-Estimate the relative excess risk (ratio of excess hazards) for the difference in rectal cancer survival between 1993-2002 and 2003-2012. First, tabulate the observations by follow-up time interval, age group, sex and period.
-
-```{r p9_10, echo=TRUE, message=F}
-BL <- list(fot=c(0,3/12,1:5))
-names(pm) <- c("sex","year","agegroup","haz")
-sire$period <- cut( cal.yr(sire$dg_date), c(1993,2003,2013), right=F,dig.lab = 4)
-Lex <- lexpand(sire, birth = bi_date,
-               entry = dg_date, exit = ex_date,
-               status = status%in%1:2,
-               breaks = BL, pophaz = pm,pp=F,
-               aggre = list(fot,agegr,sex,period)
-)
-
-```
-
-The piecewise constant excess hazard model can be fitted using ``relpois_ag`` function in ``popEpi`` package:
-
-```{r p9_11, echo=TRUE, message=F}
-m1 <- relpois_ag(formula = from0to1 ~ period+fot*agegr, 
-                 data = Lex, d.exp = d.exp, offset = log(pyrs))
-ci.exp(m1)
-```
-
-Age-adjusted excess mortality among patients diagnosed in 2003-2012 is 0.78-fold compared to patients diagnosed in 1993-2002. 
-
-In cancer survival, it is almost always necessary to include interactions between follow-up time and age into the model (i.e. excess hazards are not proportional between age groups):
-
-```{r p9_12, echo=TRUE, message=F}
-m0 <- relpois_ag(formula = from0to1 ~ period+fot + agegr, 
-                 data = Lex, d.exp = d.exp, offset = log(pyrs))
-anova(m0,m1,test="LRT")
-```
-
-EXTRA: The same model can be fitted using ``glm`` function. The link function of relative survival Poisson regression can be specified as follows:
-
-```{r p9_13, echo=TRUE, message=F}
-Lex$FUT <- cut( Lex$fot, c(0,3/12,1:5), right=F)
-d_star <- Lex$d.exp
-
-#define link function for relative survival regression
-rspois <- poisson()
-rspois$link <- "glm relative survival model with Poisson error"
-rspois$linkfun <- function(mu) log(mu - d_star)
-rspois$linkinv <- function(eta) d_star + exp(eta)
-assign(".d_star", Lex$d.exp, env = .GlobalEnv)
-rspois$initialize <- expression({
-  if (any(y < 0)) stop(paste("Negative values not allowed for", 
-                             "the Poisson family"))
-  n <- rep.int(1, nobs)
-  mustart <- pmax(y, .d_star) + 0.1
-})
-
-#glm model
-m2 <- glm(formula = from0to1 ~ period+FUT*agegr, 
-          data = Lex, family=rspois, offset = log(pyrs))
-ci.exp(m2)
-```
-
-
-
-
 

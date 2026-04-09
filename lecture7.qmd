@@ -92,6 +92,51 @@ editor: visual
 | 65-74           | 0.29             | 0.20             | 0.10             |
 | 75+             | 0.29             | 0.14             | 0.10             |
 
+# Age standardisation in sparse data
+
+-   Use pre-weighting of individual observations instead of weighted average of age-specific estimates
+
+-   Allows estimation up to 5 years, even though the 5-year estimate would not be available for all age groups
+
+-   See: Rutherford et al. 2020: Estimation of age-standardized net survival, even when age-specific data are sparse.
+
+```{r, comment=NA,echo=FALSE,results='hide',warning=FALSE,message=FALSE}
+orca <- read.table(file="oralca2.txt")
+library(Epi)
+library(popEpi)
+set.seed(23032020)
+orca$dg_date <- runif(nrow(orca), min=1985, max=2005)
+orca$sex <- ifelse(orca$sex=="Male",0,1)
+names(orca)[2] <- "dg_age"
+Lex <- Lexis(entry = list(FUT = 0, AGE = dg_age, CAL = dg_date), 
+           exit = list(FUT = time), 
+           data = orca,
+           exit.status = factor(event, levels = 0:2, 
+                    labels = c("alive", "canD", "othD")), 
+           merge = TRUE)
+pm <- popmort
+names(pm) <- c("sex", "CAL", "AGE", "haz")
+cutpoints <- c(0,55,65,75,Inf)
+Lex$agegr <- cut(Lex$dg_age, cutpoints, right=F)
+cutpoints <- c(0,55,65,75,Inf)
+ICSS$agegr <- cut(ICSS$age, cutpoints, right = FALSE)
+w <- aggregate(ICSS1~agegr, data = ICSS, FUN = sum)
+weights <- w[,c(1,2)]
+weights$N <- table(Lex$agegr)
+weights$w_pat <- weights$N/sum(weights$N)
+weights$w_ICSS1 <- weights$ICSS1/100000
+weights$individual_weights <- weights$w_ICSS1/weights$w_pat
+```
+
+```{r, comment=NA,echo=FALSE,warning=FALSE,message=FALSE}
+weights
+```
+
+
+
+
+
+
 # Ex. Oral cancer data
 
 Relative survival analysis
@@ -102,7 +147,7 @@ Relative survival analysis
 
 \footnotesize
 \vspace{-0.1cm}
-```{r, comment=NA,echo=T,warning=FALSE}
+```{r, comment=NA,echo=T,warning=FALSE,message=FALSE}
 orca <- read.table(file="oralca2.txt")
 library(Epi)
 library(popEpi)
@@ -171,51 +216,28 @@ w
 
 ```{r, comment=NA,echo=T,message=F,fig.height=5.5, dev.args=list(pointsize=23)}
 Lex$agegr <- cut(Lex$dg_age, cutpoints, right=F)
-surv.EII.ICSS <- survtab(FUT ~ 1+adjust(agegr), data = Lex, 
-              surv.type = "surv.rel",
-              pophaz = pm, weights = w$ICSS1,
-              breaks = list(FUT = seq(0, 5, 1/12)))
+
 surv.PP.ICSS <- survtab(FUT ~ 1+adjust(agegr), data = Lex, 
               surv.type = "surv.rel",relsurv.method = "pp",
               pophaz = pm, weights = w$ICSS1,
               breaks = list(FUT = seq(0, 5, 1/12)))
 ```
 
-# Ex. Oral cancer data, internal vs ICSS weights
-
-\footnotesize
-
-```{r, comment=NA,echo=T,fig.show='hide',message=F}
-par(mar=c(4,4,0.5,1))
-plot(surv.EII, lwd=2, conf.int=F,ylim=c(0,1)) 
-lines(surv.PP, lwd=2,col="red", conf.int=F)
-lines(surv.EII.ICSS, lwd=2, lty=2, conf.int=F)
-lines(surv.PP.ICSS, lwd=2,col="red",lty=2, conf.int=F)
-
-legend("bottomleft",c("Age-standardised Ederer II (internal weights)",
-                    "Pohar Perme",
-                    "Age-standardised Ederer (ICSS weights)",
-                    "Age-standardised Pohar Perme (ICSS weights)"),
-       lty=c(1,1,2,2), lwd=2,col=c("black","red","black","red"))
-```
 
 # Ex. Oral cancer data, ICSS weights
 
 \footnotesize
 
-```{r, comment=NA,echo=F,message=F,fig.height=5.5, dev.args=list(pointsize=20)}
+```{r, comment=NA,echo=T,message=F,fig.height=5.0, dev.args=list(pointsize=23)}
 par(mar=c(4,4,0.5,1))
-plot(surv.EII, lwd=2, conf.int=F,ylim=c(0,1)) 
-lines(surv.PP, lwd=2,col="red", conf.int=F)
-lines(surv.EII.ICSS, lwd=2, lty=2, conf.int=F)
-lines(surv.PP.ICSS, lwd=2,col="red",lty=2, conf.int=F)
-
-legend("bottomleft",c("Age-standardised Ederer II (internal weights)",
-                    "Pohar Perme",
-                    "Age-standardised Ederer (ICSS weights)",
+plot(surv.PP, lwd=2, conf.int=F,ylim=c(0,1)) 
+lines(surv.PP.ICSS, lwd=2, lty=2, conf.int=F)
+legend("bottomleft",c("Non-standardised Pohar Perme",
                     "Age-standardised Pohar Perme (ICSS weights)"),
-       lty=c(1,1,2,2), lwd=2,col=c("black","red","black","red"))
+       lty=c(1,2), lwd=2,col=c("black","black"))
 ```
+
+
 
 # Period approach
 
@@ -238,11 +260,12 @@ Example: 5-year survival based on patients diagnosed in 2011-2018 and followed i
 \footnotesize
 
 ```{r, comment=NA,echo=T,message=F,fig.height=5.5, dev.args=list(pointsize=20)}
-#Age-standardised Ederer II estimator
-surv.EII.period <- survtab(FUT ~ 1 + adjust(agegr), data = Lex, 
-              surv.type = "surv.rel",
-              pophaz = pm, weights = "internal",
-              breaks = list(FUT = seq(0, 5, 1/12), CAL=c(2002,2005)))
+#Age-standardised Pohar Perme using ICSS weights and period approach
+surv.PP.ICSS.period <- survtab(FUT ~ 1+adjust(agegr), data = Lex, 
+              surv.type = "surv.rel",relsurv.method = "pp",
+              pophaz = pm, weights = w$ICSS1,
+              breaks = list(FUT = seq(0, 5, 1/12),CAL=c(2002,2005)))
+
 ```
 
 # Ex. Oral cancer data, period approach
@@ -252,8 +275,8 @@ surv.EII.period <- survtab(FUT ~ 1 + adjust(agegr), data = Lex,
 ```{r, comment=NA,echo=T,message=F,fig.height=5.0, dev.args=list(pointsize=20)}
 #Age-standardised Ederer II estimator
 par(mar=c(4,4,0.5,1))
-plot(surv.EII, lwd=2, conf.int=F,ylim=c(0,1)) 
-lines(surv.EII.period, lwd=2,col="red", conf.int=F)
+plot(surv.PP.ICSS, lwd=2, conf.int=F,ylim=c(0,1)) 
+lines(surv.PP.ICSS.period, lwd=2,col="red", conf.int=F)
 legend("bottomleft",c("Diagnosed in 1985-2004",
          "Diagnosed in 1985-2004 and followed-up in 2002-2004"),
        lty=c(1,1), lwd=2,col=c("black","red"))
@@ -269,7 +292,7 @@ legend("bottomleft",c("Diagnosed in 1985-2004",
 
 2.  Logarithm of cumulative excess mortality
 
-$$\log[\Lambda_\text{E}(t)]=\text{spline}[log(t)\mid \alpha]+\beta X$$
+$$\log[\Lambda_\text{E}(t)]=\text{spline}[\log(t)\mid \alpha]+\beta X$$
 
 -   can be modelled using spline functions for the baseline cumulative excess hazard (\texttt{rstpm2} package)
 
@@ -343,8 +366,7 @@ orca <- merge(orca,pm,
               by.x=c("sex","ex_age","ex_year"),
               by.y=c("sex","AGE","CAL"))
 fit3 <- stpm2(Surv(time,event%in%c(1,2))~1,
-              data=orca,df=3,
-              bhazard=orca$haz)
+              data=orca,df=3,bhazard=orca$haz)
 ```
 
 # Ex. Oral cancer data, hazard
