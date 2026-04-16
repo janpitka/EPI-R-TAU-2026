@@ -39,7 +39,7 @@ point is a rough approximation of incidence density sampling, which ideally woul
 over the whole study period. Hence the exposure odds ratios calculable from the data are
 estimates of the corresponding hazard rate ratios between the exposure groups.
 After exclusions, refusals etc., 474 cases (92% of eligible cases) and 926 controls (82%) were interviewed. This was done face-to-face with a structured questionnaire by trained interviewers, who were not informed about the subjects case-control status.
-For this exercise we have selected a few host variables from the study in an ascii-file, melanoma.dat.
+For this exercise we have selected a few host variables from the study in an ascii-file, melanoma.dat. 
 
 
 The variables are listed in the following table.

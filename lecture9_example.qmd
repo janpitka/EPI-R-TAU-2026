@@ -1,0 +1,120 @@
+---
+title: "Net survival of rectal cancer patients"
+author: "Author Name"
+institute: "Author's affiliation"
+date: "`r Sys.Date()`"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Patient cohort
+
+Data frame `sire` includes observations of a simulated cohort of 8243 female Finnish rectal cancer patients diagnosed between 1993–2012.
+
+## Statistical methods
+
+The net survival was estimated by using the Pohar Perme estimator. Traditional direct age-standardisation was used for survival comparisons between diagnosis periods 1993–2002 and 2003–2012. The age standardisation was carried out using the International Cancer Survival Standard weights (ICSS1) in five age groups (0–44, 45–54, 55–64, 65–74 and 75 years and older).
+
+## Estimation in R
+
+```{r, echo=FALSE, results='hide', warning=FALSE}
+library(Epi)
+library(popEpi)
+library(data.table)
+library(knitr)
+
+pm <- popEpi::popmort
+
+sire$agegr <- cut(sire$dg_age,c(0,45,55,65,75,Inf),right=F)
+
+Lex <- Lexis(entry = list(FUT = 0, AGE = dg_age, 
+                          CAL = cal.yr(dg_date)),
+             exit = list(CAL = cal.yr(ex_date)),
+             data = sire,
+             exit.status = factor(status, levels = 0:2,
+                                  labels = c("alive", "canD", "othD")),
+             merge = TRUE)
+
+Lex$period <- cut( cal.yr(Lex$dg_date), c(1993,2003,2013), right=F,dig.lab = 4)
+ICSS1 <- aggregate(ICSS1~cut(ICSS$age, 
+                   c(0,45,55,65,75,Inf), right = FALSE), 
+                   data = ICSS, FUN = sum)
+w <- list(agegr = ICSS1$ICSS1)
+
+BL <- list(FUT=seq(0, 15, by = 1/12))
+names(pm) <- c("sex","CAL","AGE","haz")
+```
+
+Net survival was estimated by using `survtab` function in `popEpi` package. The estimation was done separately for the two subsets of data (calendar periods of diagnosis).
+
+```{r, echo=TRUE, results='hide', warning=FALSE}
+surv1993 <- survtab(
+  Surv(time = FUT, event = lex.Xst%in%c("canD", "othD")) 
+  ~ adjust(agegr), 
+  data = Lex, subset=period=="[1993,2003)",
+  pophaz = pm,surv.type = "surv.rel",
+  relsurv.method = "pp",breaks = BL, weights=w)
+
+surv2003 <- survtab(
+  Surv(time = FUT, event = lex.Xst%in%c("canD", "othD")) 
+  ~ adjust(agegr), 
+  data = Lex, subset=period=="[2003,2013)",
+  pophaz = pm,surv.type = "surv.rel",
+  relsurv.method = "pp",breaks = BL, weights=w)
+```
+
+```{r, echo=FALSE, results='hide', warning=FALSE}
+res1993 <- summary(surv1993,t=c(1,5,10,15))
+res1993$period <- "1993-2002"
+res2003 <- summary(surv2003,t=c(1,5,10))
+res2003$period <- "2003-2012"
+
+#combine estimates of the two periods
+res <- rbind(res1993,res2003)
+
+tb <- res[,.(period, Tstop, est=round(r.pp.as*100),ci=paste0("(",round(r.pp.as.lo*100),", ",round(r.pp.as.hi*100),")"))]
+
+#from long to wide data format
+tb <- dcast(tb,Tstop~period,value.var=c("est","ci"))
+
+#reorder columns
+tb <- tb[,c("Tstop","est_1993-2002","ci_1993-2002","est_2003-2012","ci_2003-2012")]
+tb[is.na(tb)] <- "-"
+```
+
+## Estimates of net survival in table
+
+Age-standardised net survival of rectal cancer patients at 1, 5, 10 and 15 years since diagnosis by calendar period of diagnosis
+
+```{r, echo=FALSE}
+kable(tb, col.names = c("Time (years)", "1993–2002", "95% CI", "2003–2012","95% CI"), align = c("l","r","r","r","r"))
+```
+
+## Net survival in figure
+
+Figure shows the monthly estimates of cumulative age-standardised net survival of rectal cancer patients diagnosed in 1993–2002 and 2003–2012, respectively.
+
+```{r, echo=FALSE}
+par(mfrow=c(1,1),mar=c(4,4,1,1))
+plot(0,0,type="n",xlim=c(0,15),ylim=c(0,100),las=1,xaxs="i",yaxs="i",
+     ylab="Net survival (%)",
+     xlab="Time since diagnosis (years)")
+lines(c(0,surv1993[,Tstop]),c(100,surv1993[,r.pp.as*100]),col="red")
+lines(c(0,surv2003[,Tstop]),c(100,surv2003[,r.pp.as*100]),col="blue")
+legend("bottomright",c("2003–2012","1993–2002"),col=c("blue","red"),lty=1)
+```
+
+## Other output formats
+
+In addition to this `html` document format, try to render this Quarto document to different presentation format by modifying the header:
+
+-   html (`format: revealjs`)
+-   powerpoint (`format: pptx`) 
+-   pdf (`format: beamer`, N.B. requires a TeX distribution, e.g. TinyTeX)
+
+and to different document formats: 
+
+-   word (`format: docx`)
+-   pdf (`format: pdf`, N.B. requires a TeX distribution, e.g. TinyTeX)

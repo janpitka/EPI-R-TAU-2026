@@ -1,0 +1,69 @@
+---
+title: "Epidemiological Data Analysis using R - Introduction to Quarto"
+author: 
+  - Karri Seppä \newline
+  - Faculty of Social Sciences, Tampere university \newline
+  - Finnish Cancer Registry
+institute: "<karri.seppa@cancer.fi>"
+format: 
+  beamer:
+    aspectratio: 32
+    navigation: horizontal
+    header-includes:  |
+      \setbeamertemplate{navigation symbols}{}
+      \setbeamertemplate{footline}[page number]{}
+editor: visual
+---
+
+## What Is Quarto?
+
+Quarto is an open‑source publishing system for:
+
+-   Presentations
+-   Reports
+-   Websites
+-   Books
+
+It integrates code and output.
+
+
+## Why Quarto?
+
+-   Reproducible research
+-   Plain text source files
+-   Multiple output formats
+-   Strong RStudio integration
+
+
+## Quarto vs R Markdown
+
+-   Quarto is engine‑agnostic
+-   Supports multiple languages
+-   Unified format for documents & presentations
+-   Future‑focused replacement
+
+
+## Output Formats
+
+A single `.qmd` file can render to:
+
+-   HTML (Reveal.js)
+-   PDF
+-   Word
+-   PowerPoint
+-   Websites
+
+See examples with source codes: https://quarto.org/docs/gallery/ 
+
+
+## Document Structure
+
+A Quarto file consists of:
+
+1.  YAML header
+2.  Markdown text
+3.  Code chunks
+
+Each `##` creates a new slide.
+
+**Moodle:** Download lecture9_example.qmd, open it in RStudio and render to `html` document format.
